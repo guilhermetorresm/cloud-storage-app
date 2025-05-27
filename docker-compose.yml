@@ -1,0 +1,42 @@
+services:
+  
+  backend:
+    build: 
+      context: .
+      dockerfile: backend/Dockerfiles/Dockerfile.dev
+    container_name: backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload # Inicia o servidor com reload automático
+    volumes:
+      - ./app:/app
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/mydatabase
+    # env_file:
+    #   - backend/.env
+    depends_on:
+      - db  # Garante que o contêiner do banco de dados inicie antes da API
+    networks:
+      - app-network
+
+  # Serviço do Banco de Dados PostgreSQL
+  db:
+    image: postgres:15-alpine  # Usa uma imagem oficial e leve do PostgreSQL
+    container_name: postgres_db
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=mydatabase
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    ports:
+      - "5432:5432"
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:  # Define o volume para persistência dos dados
+
+networks:
+  app-network:
+    driver: bridge

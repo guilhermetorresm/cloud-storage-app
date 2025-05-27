@@ -1,15 +1,15 @@
 # app/main.py
-from fastapi import FastAPI
-from app.api.v1 import users_router
+from fastapi import FastAPI, Depends, HTTPException, status
+
 
 app = FastAPI(
-    title="",
+    title="cloud-storage-app",
     version="0.1.0",
 )
 
 # Incluir os roteadores da API
-app.include_router(users_router.router, prefix="/api/v1")
+# app.include_router(users_router.router, prefix="/api/v1")
 
-@app.get("/")
-def read_root():
+@app.get("/health", status_code=status.HTTP_200_OK)
+async def health():
     return {"status": "API está no ar!"}
