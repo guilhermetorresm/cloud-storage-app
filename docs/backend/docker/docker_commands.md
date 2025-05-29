@@ -1,3 +1,16 @@
+Para rodar o docker-compose:
+
+docker compose up --build -d
+
+Para verificar se o container está rodando:
+
+docker compose logs
+
+Para parar o docker-compose:
+
+docker compose down
+
+
 
 Para rodar o build e levantar o servidor backend:
 
