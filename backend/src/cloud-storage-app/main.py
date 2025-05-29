@@ -12,4 +12,4 @@ app = FastAPI(
 
 @app.get("/health", status_code=status.HTTP_200_OK)
 async def health():
-    return {"status": "API está no ar!"}
+    return {"status": "API está no online!"}
