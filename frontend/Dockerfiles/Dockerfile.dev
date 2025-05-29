@@ -1,0 +1,20 @@
+# Use Node.js LTS
+FROM node:18-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY frontend/package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy source code
+COPY frontend/ .
+
+# Expose port
+EXPOSE 3000
+
+# Start the development server with polling
+CMD ["npm", "start", "--", "--host", "0.0.0.0", "--poll"]
