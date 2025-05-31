@@ -1,5 +1,6 @@
 // src/components/Topbar.jsx
 import React from 'react';
+import { Search } from 'lucide-react';
 import logo from '../Assets/logo_cortada.png';
 
 export default function Topbar() {
@@ -12,11 +13,15 @@ export default function Topbar() {
 
       {/* Barra de pesquisa */}
       <div className="flex-1 px-20 relative -left-3">
-        <input
-          type="text"
-          placeholder="Pesquisar arquivos..."
-          className="w-full max-w-md px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+        <div className="relative w-full max-w-md">
+          {/* Ícone de lupa */}
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="Pesquisar arquivos..."
+            className="w-full px-10 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
       </div>
 
       {/* Ícone de perfil */}
