@@ -19,10 +19,10 @@ class DatabaseSettings(BaseSettings):
     postgres_password: str = Field(default="postgres", env="POSTGRES_PASSWORD")
     postgres_db: str = Field(default="cloud_storage_db", env="POSTGRES_DB")
     postgres_port: int = Field(default=5432, env="POSTGRES_PORT")
-    
+
     # URL completa do banco (opcional, sobrescreve as configurações individuais)
     database_url: Optional[str] = Field(default=None, env="DATABASE_URL")
-    
+
     # Configurações do pool de conexões
     pool_size: int = Field(default=20, env="DB_POOL_SIZE")
     max_overflow: int = Field(default=30, env="DB_MAX_OVERFLOW")
@@ -35,13 +35,19 @@ class DatabaseSettings(BaseSettings):
     def get_database_url(self) -> str:
         """Constrói a URL do banco se não foi fornecida diretamente"""
         if self.database_url:
+            # Garante que a URL use o driver asyncpg
+            if not self.database_url.startswith("postgresql+asyncpg://"):
+                return self.database_url.replace("postgresql://", "postgresql+asyncpg://")
             return self.database_url
         
+        # Constrói a URL com o driver asyncpg
         return f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}@{self.postgres_server}:{self.postgres_port}/{self.postgres_db}"
     
     model_config = {
         "env_file": ".env",
-        "case_sensitive": False
+        "case_sensitive": False,
+        "env_file_encoding": "utf-8",
+        "extra": "ignore"
     }
 
 

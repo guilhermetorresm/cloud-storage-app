@@ -7,7 +7,7 @@ import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from sqlalchemy import event, pool
+from sqlalchemy import event, pool, text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -34,7 +34,7 @@ class DatabaseManager:
         self._engine: AsyncEngine | None = None
         self._session_factory: async_sessionmaker[AsyncSession] | None = None
         self._settings = get_settings()
-    
+    0
     @property
     def engine(self) -> AsyncEngine:
         """Retorna a engine do SQLAlchemy"""
@@ -63,6 +63,8 @@ class DatabaseManager:
                 "pool_pre_ping": True,  # Verifica conexões antes de usar
                 "future": True,  # Usar API futura do SQLAlchemy
             }
+
+            
             
             # Para ambiente de teste, usar NullPool para evitar problemas
             if self._settings.app.environment == "test":
@@ -123,7 +125,7 @@ class DatabaseManager:
         """Verifica se a conexão com o banco está funcionando"""
         try:
             async with self.get_session() as session:
-                result = await session.execute("SELECT 1")
+                result = await session.execute(text("SELECT 1"))
                 return result.scalar() == 1
         except Exception as e:
             logger.error(f"Database health check failed: {e}")

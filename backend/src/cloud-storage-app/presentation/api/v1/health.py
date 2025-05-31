@@ -4,28 +4,60 @@ Verifica o status dos serviços essenciais.
 """
 
 import logging
+import asyncio
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, List, Tuple
 
 from fastapi import APIRouter, status, Depends
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ....infrastructure.database.connection import get_database_session, db_manager
-from ....config import get_settings
+from ....config import get_settings, AppSettings
 
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
 settings = get_settings()
 
+# --- Funções de Verificação Modulares ---
 
-@router.get("/", status_code=status.HTTP_200_OK)
+async def check_database() -> Tuple[str, Dict[str, Any]]:
+    """Verifica a conectividade com o banco de dados."""
+    try:
+        is_healthy = await db_manager.health_check()
+        if is_healthy:
+            return "healthy", {"status": "healthy", "message": "Database connection successful"}
+        else:
+            return "unhealthy", {"status": "unhealthy", "message": "Database connection failed"}
+    except Exception as e:
+        logger.error(f"Database health check failed: {e}")
+        return "unhealthy", {"status": "unhealthy", "message": f"Database check error: {str(e)}"}
+
+async def check_critical_configurations(config: AppSettings) -> Tuple[str, Dict[str, Any]]:
+    """Verifica se configurações críticas estão definidas corretamente."""
+    issues = []
+    
+    # Exemplo: Chave secreta não deve ser o valor padrão
+    if not config.auth.secret_key or config.auth.secret_key == "your-super-secret-key-change-this-in-production-and-make-it-very-long":
+        issues.append("AUTH_SECRET_KEY is not properly configured.")
+    
+    # Exemplo: Nome do bucket S3 deve estar presente
+    if not config.storage.s3_bucket_name:
+        issues.append("S3_BUCKET_NAME is not configured.")
+        
+    if issues:
+        # Consideramos um problema de configuração como 'degraded', não 'unhealthy'
+        return "degraded", {"status": "degraded", "issues": issues}
+    
+    return "healthy", {"status": "healthy", "message": "Critical configurations are set."}
+
+
+# --- Endpoints ---
+
+@router.get("/", status_code=status.HTTP_200_OK, tags=["Health"])
 async def health_check() -> Dict[str, Any]:
-    """
-    Health check básico da aplicação.
-    Retorna status simples sem verificações profundas.
-    """
+    """Health check básico que apenas confirma que a aplicação está online."""
     return {
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
@@ -34,109 +66,79 @@ async def health_check() -> Dict[str, Any]:
     }
 
 
-@router.get("/detailed", status_code=status.HTTP_200_OK)
-async def detailed_health_check(
-    db: AsyncSession = Depends(get_database_session)
-) -> Dict[str, Any]:
+@router.get("/detailed", status_code=status.HTTP_200_OK, tags=["Health"])
+async def detailed_health_check() -> JSONResponse:
     """
-    Health check detalhado com verificação de dependências.
-    Verifica banco de dados e outros serviços críticos.
+    Executa um health check detalhado, verificando todas as dependências críticas
+    como banco de dados e configurações.
     """
-    health_status = {
-        "status": "healthy",
+    # Lista de verificações a serem executadas concorrentemente
+    checks_to_run = [
+        check_database(),
+        check_critical_configurations(settings)
+    ]
+    
+    # Executa todas as verificações em paralelo
+    results = await asyncio.gather(*checks_to_run)
+    
+    # Mapeia os nomes das verificações aos resultados
+    check_results = {
+        "database": results[0][1],
+        "configuration": results[1][1]
+    }
+    
+    # Determina o status geral
+    overall_status = "healthy"
+    for status_result, _ in results:
+        if status_result == "unhealthy":
+            overall_status = "unhealthy"
+            break
+        if status_result == "degraded":
+            overall_status = "degraded"
+
+    response_body = {
+        "status": overall_status,
         "timestamp": datetime.utcnow().isoformat(),
         "service": settings.app.app_name,
         "version": settings.app.app_version,
         "environment": settings.app.environment,
-        "checks": {}
+        "checks": check_results
     }
     
-    overall_healthy = True
-    
-    # Verificar banco de dados
-    try:
-        db_healthy = await db_manager.health_check()
-        health_status["checks"]["database"] = {
-            "status": "healthy" if db_healthy else "unhealthy",
-            "message": "Database connection successful" if db_healthy else "Database connection failed"
-        }
-        if not db_healthy:
-            overall_healthy = False
-    except Exception as e:
-        logger.error(f"Database health check failed: {e}")
-        health_status["checks"]["database"] = {
-            "status": "unhealthy",
-            "message": f"Database check error: {str(e)}"
-        }
-        overall_healthy = False
-    
-    # Verificar configurações críticas
-    config_issues = []
-    
-    if not settings.auth.secret_key or settings.auth.secret_key == "your-super-secret-key-change-this-in-production-and-make-it-very-long":
-        config_issues.append("SECRET_KEY not properly configured")
-    
-    if not settings.storage.s3_bucket_name:
-        config_issues.append("S3_BUCKET_NAME not configured")
-    
-    health_status["checks"]["configuration"] = {
-        "status": "healthy" if not config_issues else "warning",
-        "issues": config_issues if config_issues else None
-    }
-    
-    # Status geral
-    if not overall_healthy:
-        health_status["status"] = "unhealthy"
-    elif config_issues:
-        health_status["status"] = "degraded"
-    
-    # Retornar status HTTP apropriado
-    if health_status["status"] == "unhealthy":
-        return health_status, status.HTTP_503_SERVICE_UNAVAILABLE
-    elif health_status["status"] == "degraded":
-        return health_status, status.HTTP_200_OK
-    else:
-        return health_status
-
-
-@router.get("/readiness", status_code=status.HTTP_200_OK)
-async def readiness_check(
-    db: AsyncSession = Depends(get_database_session)
-) -> Dict[str, Any]:
-    """
-    Readiness probe - verifica se a aplicação está pronta para receber tráfego.
-    Usado principalmente em ambientes Kubernetes.
-    """
-    try:
-        # Verificar conexão com banco
-        db_healthy = await db_manager.health_check()
+    # Retorna 503 apenas se um componente crítico estiver indisponível
+    if overall_status == "unhealthy":
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content=response_body
+        )
         
-        if not db_healthy:
-            return {
-                "status": "not_ready",
-                "message": "Database not available"
-            }, status.HTTP_503_SERVICE_UNAVAILABLE
-        
-        return {
-            "status": "ready",
-            "message": "Application is ready to serve traffic"
-        }
-        
-    except Exception as e:
-        logger.error(f"Readiness check failed: {e}")
-        return {
-            "status": "not_ready",
-            "message": f"Readiness check failed: {str(e)}"
-        }, status.HTTP_503_SERVICE_UNAVAILABLE
+    return JSONResponse(status_code=status.HTTP_200_OK, content=response_body)
 
 
-@router.get("/liveness", status_code=status.HTTP_200_OK)
-async def liveness_check() -> Dict[str, Any]:
+@router.get("/readiness", status_code=status.HTTP_200_OK, tags=["Health"])
+async def readiness_check() -> JSONResponse:
     """
-    Liveness probe - verifica se a aplicação está rodando.
-    Usado principalmente em ambientes Kubernetes.
+    Verifica se a aplicação está pronta para receber tráfego (Readiness Probe).
+    Falha se dependências essenciais, como o banco de dados, não estiverem prontas.
     """
-    return {
-        "status": "alive",
-        "message": "Application is running"
-    }
+    db_status, db_details = await check_database()
+    
+    if db_status != "healthy":
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={"status": "not_ready", "details": db_details}
+        )
+        
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={"status": "ready", "message": "Application is ready to serve traffic."}
+    )
+
+
+@router.get("/liveness", status_code=status.HTTP_200_OK, tags=["Health"])
+async def liveness_check() -> Dict[str, str]:
+    """
+    Verifica se a aplicação está rodando (Liveness Probe).
+    Deve ser uma checagem rápida e sem dependências externas.
+    """
+    return {"status": "alive"}
