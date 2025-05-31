@@ -1,10 +1,12 @@
 import Sidebar from "./Components/Sidebar";
-import Topbar from "./Components/Topbar";
+// import Topbar from "./Components/Topbar";
+//import TopbarNoSearch from "./Components/TopbarNoSearch";
+import TopbarDefault from "./Components/TopbarDefault";
 
 export default function App() {
   return (
       <div className="flex h-screen flex-col">
-        <Topbar />
+        <TopbarDefault />
     <div className="flex h-screen">
       <Sidebar />
         <main className="flex-1 bg-gray-100 p-6">
