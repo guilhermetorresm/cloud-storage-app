@@ -54,20 +54,25 @@ class DatabaseManager:
         try:
             # Configurações da engine
             engine_kwargs = {
-                "url": str(self._settings.database.database_url),
+                "url": str(self._settings.database.get_database_url()),
                 "echo": self._settings.database.echo_sql,
                 "pool_size": self._settings.database.pool_size,
                 "max_overflow": self._settings.database.max_overflow,
                 "pool_timeout": self._settings.database.pool_timeout,
                 "pool_recycle": self._settings.database.pool_recycle,
                 "pool_pre_ping": True,  # Verifica conexões antes de usar
+                "future": True,  # Usar API futura do SQLAlchemy
             }
             
             # Para ambiente de teste, usar NullPool para evitar problemas
             if self._settings.app.environment == "test":
                 engine_kwargs["poolclass"] = NullPool
             
-            self._engine = create_async_engine(**engine_kwargs)
+            # Criar engine assíncrona com driver asyncpg
+            self._engine = create_async_engine(
+                engine_kwargs["url"].replace("postgresql://", "postgresql+asyncpg://"),
+                **{k: v for k, v in engine_kwargs.items() if k != "url"}
+            )
             
             # Configurar listeners para logging de conexões
             self._setup_engine_listeners()

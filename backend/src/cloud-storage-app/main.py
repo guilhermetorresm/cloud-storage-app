@@ -10,7 +10,7 @@ from starlette.exceptions import HTTPException
 
 from .config import get_settings
 from .infrastructure.database.connection import init_database, close_database
-from .presentation.api.v1 import auth, files, users, health
+from .presentation.api.v1 import health
 from .presentation.middleware.error_handler import (
     http_exception_handler,
     validation_exception_handler,
@@ -124,31 +124,10 @@ if settings.app.debug:
         return response
 
 
-# Incluir routers da API
-api_prefix = "/api/v1"
-
 app.include_router(
     health.router,
     prefix="/health",
     tags=["Health Check"]
-)
-
-app.include_router(
-    auth.router,
-    prefix=f"{api_prefix}/auth",
-    tags=["Authentication"]
-)
-
-app.include_router(
-    users.router,
-    prefix=f"{api_prefix}/users",
-    tags=["Users"]
-)
-
-app.include_router(
-    files.router,
-    prefix=f"{api_prefix}/files",
-    tags=["Files"]
 )
 
 
