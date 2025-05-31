@@ -19,13 +19,12 @@ services:
       - app-network
     develop:
       watch:
-        - action: sync
+        - action: sync+restart
           path: ./backend
           target: /app
-          ignore:
-            - node_modules/
         - action: rebuild
-          path: backend/package.json
+          path: backend/pyproject.toml
+          target: /app/pyproject.toml
 
   db:
     image: postgres:15-alpine
