@@ -1,12 +1,16 @@
-import './App.css';
+import Sidebar from "./Components/Sidebar";
+import Topbar from "./Components/Topbar";
 
-function App() {
+export default function App() {
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-      <h1 className="text-4xl font-bold text-blue-600">Tailwind está funcionando! 🎉</h1>
+      <div className="flex h-screen flex-col">
+        <Topbar />
+    <div className="flex h-screen">
+      <Sidebar />
+        <main className="flex-1 bg-gray-100 p-6">
+          {/* Aqui vai o conteúdo central */}
+        </main>
+      </div>
     </div>
   );
 }
-
-export default App;
-
