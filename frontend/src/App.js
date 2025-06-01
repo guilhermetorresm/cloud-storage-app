@@ -1,18 +1,17 @@
-import Sidebar from "./Components/Sidebar";
-// import Topbar from "./Components/Topbar";
-//import TopbarNoSearch from "./Components/TopbarNoSearch";
-import TopbarDefault from "./Components/TopbarDefault";
+// src/App.js
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import EditProfile from "./Pages/editProfile";
+import EditPassword from "./Pages/editPassword";
 
-export default function App() {
+function App() {
   return (
-      <div className="flex h-screen flex-col">
-        <TopbarDefault />
-    <div className="flex h-screen">
-      <Sidebar />
-        <main className="flex-1 bg-gray-100 p-6">
-          {/* Aqui vai o conteúdo central */}
-        </main>
-      </div>
-    </div>
+    <Router>
+      <Routes>
+        <Route path="/" element={<EditProfile />} />
+        <Route path="/editPassword" element={<EditPassword />} />
+      </Routes>
+    </Router>
   );
 }
+
+export default App;

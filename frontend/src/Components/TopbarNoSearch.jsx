@@ -2,6 +2,7 @@
 import React from 'react';
 
 import logo from '../Assets/logo_cortada.png';
+import { FaUser } from 'react-icons/fa';
 
 export default function Topbar() {
   return (
@@ -14,7 +15,8 @@ export default function Topbar() {
       {/* Ícone de perfil */}
       <div className="flex items-center space-x-4">
         <button className="rounded-full bg-gray-200 p-2 hover:bg-gray-300">
-          <span role="img" aria-label="profile">👤</span>
+          <FaUser/>
+          <span role="img" aria-label="profile"></span>
         </button>
       </div>
     </header>
