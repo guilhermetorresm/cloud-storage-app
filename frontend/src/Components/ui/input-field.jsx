@@ -1,10 +1,14 @@
 "use client";
 
 import React from "react";
-import { User, Lock } from "lucide-react";
+import { User, Lock, Mail } from "lucide-react";
 
 export function InputField({ type, placeholder, icon, value, onChange }) {
-  const IconComponent = icon === "user" ? User : Lock;
+  const IconComponent =
+  icon === "user" ? User :
+  icon === "lock" ? Lock :
+  icon === "email" ? Mail :
+  null;
 
   return (
     <div className="relative">
