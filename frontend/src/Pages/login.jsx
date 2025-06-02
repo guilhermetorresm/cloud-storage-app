@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { InputField } from "./components/input-field";
-import { Button } from "./components/button";
-import { Logo } from "./components/logo";
+import { InputField } from "../Components/ui/input-field";
+import { Button } from "../Components/ui/button";
+import logo from '../Assets/logo_cortada.png';
 
 export default function LoginScreen() {
   const [usuario, setUsuario] = useState("");
@@ -19,8 +19,11 @@ export default function LoginScreen() {
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
-        <Logo />
+      <div className="bg-white rounded-3xl shadow-lg p-8 w-full max-w-md">
+
+        <div className="flex justify-center space-x-3 mb-5">
+                <img src={logo} alt="Logo" className="h-10 w-25" />
+        </div>
 
         <div className="space-y-4">
           <InputField

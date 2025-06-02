@@ -1,6 +1,7 @@
 import {BrowserRouter as Router, Routes, Route} from "react-router-dom";
 import LoginScreen from "./Pages/login";
 import Dashboard from "./Pages/dashboard";
+import Register from "./Pages/register";
  export default function App(){
   return(
     <Router>
@@ -10,6 +11,9 @@ import Dashboard from "./Pages/dashboard";
         
         {/*DashBoard */}
         <Route path="/DashBoard" element={<Dashboard/>}/>
+
+        {/*Cadastro */}
+        <Route path="/Register" element={<Register/>}/>
 
       </Routes>
     </Router>
