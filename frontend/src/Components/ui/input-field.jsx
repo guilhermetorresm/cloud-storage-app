@@ -5,10 +5,13 @@ import { User, Lock, Mail } from "lucide-react";
 
 export function InputField({ type, placeholder, icon, value, onChange }) {
   const IconComponent =
-  icon === "user" ? User :
-  icon === "lock" ? Lock :
-  icon === "email" ? Mail :
-  null;
+    icon === "user"
+      ? User
+      : icon === "lock"
+      ? Lock
+      : icon === "email"
+      ? Mail
+      : null;
 
   return (
     <div className="relative">
