@@ -10,6 +10,7 @@ export default function Register() {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [confirmarSenha, setConfirmarSenha] = useState("");
+  const [erro, setErro] = useState("");
 
   // Validações
   const hasMinLength = senha.length >= 8;
@@ -25,6 +26,17 @@ export default function Register() {
   const handleCadastro = () => {
     if (!isPasswordValid || !passwordsMatch) {
       alert("Corrija os erros da senha antes de continuar.");
+      return;
+    }
+
+    if (!nome || !usuario || !email || !senha || !confirmarSenha) {
+      setErro("Por favor, preencha todos os campos.");
+      return;
+    }
+
+    // Verificação extra: senha e confirmação devem bater
+    if (senha !== confirmarSenha) {
+      setErro("As senhas não coincidem.");
       return;
     }
 
@@ -108,6 +120,10 @@ export default function Register() {
             {/* Aviso se senhas não coincidirem */}
             {confirmarSenha && !passwordsMatch && (
               <p className="text-red-500 text-xs -mt-2">As senhas não coincidem</p>
+            )}
+
+            {erro && (
+              <p className="text-red-500 text-sm text-center">{erro}</p>
             )}
 
             <Button onClick={handleCadastro} type="submit">
