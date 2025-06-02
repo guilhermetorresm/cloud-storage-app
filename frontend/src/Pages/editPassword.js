@@ -14,6 +14,8 @@ export default function EditPassword() {
   const hasMinLength = newPassword.length >= 8;
   const hasUpperLower = /[A-Z]/.test(newPassword) && /[a-z]/.test(newPassword);
   const hasNumberSpecial = /[0-9]/.test(newPassword) && /[^A-Za-z0-9]/.test(newPassword);
+  const hasNoSpaces = !/\s/.test(newPassword);
+  const hasOnlyASCII = [...newPassword].every(c => c.charCodeAt(0) < 128);
   const passwordsMatch = newPassword === confirmPassword && confirmPassword !== "";
 
   return (
@@ -41,7 +43,7 @@ export default function EditPassword() {
                   className="absolute right-3 top-3 text-gray-500 hover:text-gray-700"
                   onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                 >
-                  {showCurrentPassword ? <FaEyeSlash /> : <FaEye />}
+                  {showCurrentPassword ? <FaEye /> : <FaEyeSlash />}
                 </button>
               </div>
             </div>
@@ -62,7 +64,7 @@ export default function EditPassword() {
                   className="absolute right-3 top-3 text-gray-500 hover:text-gray-700"
                   onClick={() => setShowNewPassword(!showNewPassword)}
                 >
-                  {showNewPassword ? <FaEyeSlash /> : <FaEye />}
+                  {showNewPassword ? <FaEye /> : <FaEyeSlash />}
                 </button>
               </div>
 
@@ -78,6 +80,14 @@ export default function EditPassword() {
                 <div className={`flex items-center text-sm ${hasNumberSpecial ? 'text-green-600' : 'text-gray-500'}`}>
                   <FaCheck className={`mr-2 ${hasNumberSpecial ? 'text-green-500' : 'text-gray-300'}`} />
                   <span>Números e caracteres especiais</span>
+                </div>
+                <div className={`flex items-center text-sm ${hasNoSpaces ? 'text-green-600' : 'text-gray-500'}`}>
+                  <FaCheck className={`mr-2 ${hasNoSpaces ? 'text-green-500' : 'text-gray-300'}`} />
+                  <span>Sem espaços</span>
+                </div>
+                <div className={`flex items-center text-sm ${hasOnlyASCII ? 'text-green-600' : 'text-gray-500'}`}>
+                  <FaCheck className={`mr-2 ${hasOnlyASCII ? 'text-green-500' : 'text-gray-300'}`} />
+                  <span>Apenas caracteres válidos (sem Unicode)</span>
                 </div>
               </div>
             </div>
@@ -100,7 +110,7 @@ export default function EditPassword() {
                   className="absolute right-3 top-3 text-gray-500 hover:text-gray-700"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 >
-                  {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+                  {showConfirmPassword ? <FaEye /> : <FaEyeSlash />}
                 </button>
               </div>
               {confirmPassword && !passwordsMatch && (
@@ -111,11 +121,25 @@ export default function EditPassword() {
             {/* Botão de submit */}
             <button
               className={`w-full py-2 rounded-lg transition-colors font-medium ${
-                hasMinLength && hasUpperLower && hasNumberSpecial && passwordsMatch && currentPassword
+                hasMinLength &&
+                hasUpperLower &&
+                hasNumberSpecial &&
+                hasNoSpaces &&
+                hasOnlyASCII &&
+                passwordsMatch &&
+                currentPassword
                   ? 'bg-black text-white hover:bg-gray-800'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
-              disabled={!hasMinLength || !hasUpperLower || !hasNumberSpecial || !passwordsMatch || !currentPassword}
+              disabled={
+                !hasMinLength ||
+                !hasUpperLower ||
+                !hasNumberSpecial ||
+                !hasNoSpaces ||
+                !hasOnlyASCII ||
+                !passwordsMatch ||
+                !currentPassword
+              }
             >
               Alterar senha
             </button>
