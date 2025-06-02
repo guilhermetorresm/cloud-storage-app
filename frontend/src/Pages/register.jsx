@@ -15,20 +15,26 @@ export default function Register() {
 
   // Validações
   const hasMinLength = senha.length >= 8;
+  const hasMaxLength = senha.length <= 128;
   const hasUpperLower = /[A-Z]/.test(senha) && /[a-z]/.test(senha);
   const hasNumberSpecial = /[0-9]/.test(senha) && /[^A-Za-z0-9]/.test(senha);
   const hasNoSpaces = !/\s/.test(senha);
-  const hasOnlyASCII = [...senha].every(c => c.charCodeAt(0) < 128);
+  const hasOnlyASCII = [...senha].every((c) => c.charCodeAt(0) < 128);
   const passwordsMatch = senha === confirmarSenha && confirmarSenha !== "";
 
   const isPasswordValid =
-    hasMinLength && hasUpperLower && hasNumberSpecial && hasNoSpaces && hasOnlyASCII;
+    hasMinLength &&
+    hasMaxLength &&
+    hasUpperLower &&
+    hasNumberSpecial &&
+    hasNoSpaces &&
+    hasOnlyASCII;
 
   const handleCadastro = () => {
     if (!isPasswordValid || !passwordsMatch) {
       setErroSenha("Corrija os erros da senha antes de continuar.");
       return;
-    }else setErroSenha("");
+    } else setErroSenha("");
 
     if (!nome || !usuario || !email || !senha || !confirmarSenha) {
       setErro("Preencha todos os campos.");
@@ -88,23 +94,52 @@ export default function Register() {
             {/* Regras de senha */}
             {senha && (
               <div className="text-sm mt-1 space-y-1">
-                <p className={`${hasMinLength ? "text-green-600" : "text-gray-500"}`}>
+                <p
+                  className={`${
+                    hasMinLength ? "text-green-600" : "text-gray-500"
+                  }`}
+                >
                   <FaCheck className="inline mr-1" />
                   Mínimo 8 caracteres
                 </p>
-                <p className={`${hasUpperLower ? "text-green-600" : "text-gray-500"}`}>
+
+                <p
+                  className={`${
+                    hasMaxLength ? "text-green-600" : "text-gray-500"
+                  }`}
+                >
+                  <FaCheck className="inline mr-1" />
+                  Máximo 128 caracteres
+                </p>
+                <p
+                  className={`${
+                    hasUpperLower ? "text-green-600" : "text-gray-500"
+                  }`}
+                >
                   <FaCheck className="inline mr-1" />
                   Letras maiúsculas e minúsculas
                 </p>
-                <p className={`${hasNumberSpecial ? "text-green-600" : "text-gray-500"}`}>
+                <p
+                  className={`${
+                    hasNumberSpecial ? "text-green-600" : "text-gray-500"
+                  }`}
+                >
                   <FaCheck className="inline mr-1" />
                   Números e caractere especial
                 </p>
-                <p className={`${hasNoSpaces ? "text-green-600" : "text-gray-500"}`}>
+                <p
+                  className={`${
+                    hasNoSpaces ? "text-green-600" : "text-gray-500"
+                  }`}
+                >
                   <FaCheck className="inline mr-1" />
                   Sem espaços
                 </p>
-                <p className={`${hasOnlyASCII ? "text-green-600" : "text-gray-500"}`}>
+                <p
+                  className={`${
+                    hasOnlyASCII ? "text-green-600" : "text-gray-500"
+                  }`}
+                >
                   <FaCheck className="inline mr-1" />
                   Apenas caracteres válidos (sem Unicode)
                 </p>
@@ -121,16 +156,16 @@ export default function Register() {
 
             {/* Aviso se senhas não coincidirem */}
             {confirmarSenha && !passwordsMatch && (
-              <p className="text-red-500 text-xs -mt-2">As senhas não coincidem</p>
+              <p className="text-red-500 text-xs -mt-2">
+                As senhas não coincidem
+              </p>
             )}
 
-             {erroSenha && (
+            {erroSenha && (
               <p className="text-red-500 text-sm text-center">{erroSenha}</p>
             )}
 
-            {erro && (
-              <p className="text-red-500 text-sm text-center">{erro}</p>
-            )}
+            {erro && <p className="text-red-500 text-sm text-center">{erro}</p>}
 
             <Button onClick={handleCadastro} type="submit">
               Finalizar Cadastro
