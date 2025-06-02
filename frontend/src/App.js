@@ -1,12 +1,17 @@
-import './App.css';
+// src/App.js
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import EditProfile from "./Pages/editProfile";
+import EditPassword from "./Pages/editPassword";
 
 function App() {
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-      <h1 className="text-4xl font-bold text-blue-600">Tailwind está funcionando! 🎉</h1>
-    </div>
+    <Router>
+      <Routes>
+        <Route path="/" element={<EditProfile />} />
+        <Route path="/editPassword" element={<EditPassword />} />
+      </Routes>
+    </Router>
   );
 }
 
 export default App;
-
