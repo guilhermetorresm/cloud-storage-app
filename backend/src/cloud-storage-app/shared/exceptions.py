@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 
 class CloudStorageException(Exception):
     """Exceção base para toda a aplicação"""
-    
+
     def __init__(
         self,
         message: str,
@@ -32,7 +32,7 @@ class DomainException(CloudStorageException):
 
 class ValidationException(DomainException):
     """Exceção para erros de validação de domínio"""
-    
+
     def __init__(self, message: str, field: Optional[str] = None, value: Any = None):
         super().__init__(
             message=message,
@@ -45,7 +45,7 @@ class ValidationException(DomainException):
 
 class BusinessRuleException(DomainException):
     """Exceção para violações de regras de negócio"""
-    
+
     def __init__(self, message: str, rule: str):
         super().__init__(
             message=message,
@@ -66,7 +66,7 @@ class UserException(DomainException):
 
 class UserNotFoundException(UserException):
     """Usuário não encontrado"""
-    
+
     def __init__(self, user_id: str):
         super().__init__(
             message=f"User with ID '{user_id}' not found",
@@ -77,7 +77,7 @@ class UserNotFoundException(UserException):
 
 class UserAlreadyExistsException(UserException):
     """Usuário já existe"""
-    
+
     def __init__(self, email: str):
         super().__init__(
             message=f"User with email '{email}' already exists",
@@ -88,7 +88,7 @@ class UserAlreadyExistsException(UserException):
 
 class InvalidCredentialsException(UserException):
     """Credenciais inválidas"""
-    
+
     def __init__(self):
         super().__init__(
             message="Invalid email or password",
@@ -107,7 +107,7 @@ class FileException(DomainException):
 
 class FileNotFoundException(FileException):
     """Arquivo não encontrado"""
-    
+
     def __init__(self, file_id: str):
         super().__init__(
             message=f"File with ID '{file_id}' not found",
@@ -118,7 +118,7 @@ class FileNotFoundException(FileException):
 
 class FileAccessDeniedException(FileException):
     """Acesso ao arquivo negado"""
-    
+
     def __init__(self, file_id: str, user_id: str):
         super().__init__(
             message=f"Access denied to file '{file_id}' for user '{user_id}'",
@@ -129,7 +129,7 @@ class FileAccessDeniedException(FileException):
 
 class FileTooLargeException(FileException):
     """Arquivo muito grande"""
-    
+
     def __init__(self, size: int, max_size: int):
         super().__init__(
             message=f"File size ({size} bytes) exceeds maximum allowed ({max_size} bytes)",
@@ -140,7 +140,7 @@ class FileTooLargeException(FileException):
 
 class InvalidFileTypeException(FileException):
     """Tipo de arquivo inválido"""
-    
+
     def __init__(self, file_type: str, allowed_types: list[str]):
         super().__init__(
             message=f"File type '{file_type}' not allowed. Allowed types: {', '.join(allowed_types)}",
@@ -151,7 +151,7 @@ class InvalidFileTypeException(FileException):
 
 class FileAlreadyExistsException(FileException):
     """Arquivo já existe"""
-    
+
     def __init__(self, filename: str, folder_id: Optional[str] = None):
         super().__init__(
             message=f"File '{filename}' already exists in this location",
@@ -171,7 +171,7 @@ class AuthenticationException(CloudStorageException):
 
 class TokenExpiredException(AuthenticationException):
     """Token expirado"""
-    
+
     def __init__(self):
         super().__init__(
             message="Authentication token has expired",
@@ -181,7 +181,7 @@ class TokenExpiredException(AuthenticationException):
 
 class InvalidTokenException(AuthenticationException):
     """Token inválido"""
-    
+
     def __init__(self):
         super().__init__(
             message="Invalid authentication token",
@@ -196,7 +196,7 @@ class AuthorizationException(CloudStorageException):
 
 class InsufficientPermissionsException(AuthorizationException):
     """Permissões insuficientes"""
-    
+
     def __init__(self, required_permission: str):
         super().__init__(
             message=f"Insufficient permissions. Required: {required_permission}",
@@ -216,7 +216,7 @@ class InfrastructureException(CloudStorageException):
 
 class DatabaseException(InfrastructureException):
     """Exceção para erros de banco de dados"""
-    
+
     def __init__(self, message: str, original_error: Optional[Exception] = None):
         super().__init__(
             message=f"Database error: {message}",
@@ -227,7 +227,7 @@ class DatabaseException(InfrastructureException):
 
 class StorageException(InfrastructureException):
     """Exceção para erros de armazenamento (S3, etc.)"""
-    
+
     def __init__(self, message: str, operation: str, original_error: Optional[Exception] = None):
         super().__init__(
             message=f"Storage error during {operation}: {message}",
@@ -241,7 +241,7 @@ class StorageException(InfrastructureException):
 
 class ExternalServiceException(InfrastructureException):
     """Exceção para erros de serviços externos"""
-    
+
     def __init__(self, service: str, message: str, status_code: Optional[int] = None):
         super().__init__(
             message=f"External service '{service}' error: {message}",
