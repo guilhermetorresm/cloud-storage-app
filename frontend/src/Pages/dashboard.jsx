@@ -115,27 +115,24 @@ export default function Dashboard() {
                   ))}
                 </div>
               )}
-              </div>
-              </div>
+            </div>
+          </div>
 
-              {/* Paginação fictícia */}
-              <div className="flex justify-center items-center mt-6 space-x-2">
-                <button className="p-2 bg-white rounded-full shadow hover:bg-gray-200">
-                  <FaArrowLeft />
-                </button>
-                <div className="flex space-x-1 text-sm">
-                  <span className="px-2 py-1 bg-black text-white rounded">
-                    1
-                  </span>
-                  <span className="px-2 py-1">2</span>
-                  <span className="px-2 py-1">3</span>
-                  <span className="px-2 py-1">...</span>
-                </div>
-                <button className="p-2 bg-white rounded-full shadow hover:bg-gray-200">
-                  <FaArrowRight />
-                </button>
-              </div>
-            
+          {/* Paginação fictícia */}
+          <div className="flex justify-center items-center mt-6 space-x-2">
+            <button className="p-2 bg-white rounded-full shadow hover:bg-gray-200">
+              <FaArrowLeft />
+            </button>
+            <div className="flex space-x-1 text-sm">
+              <span className="px-2 py-1 bg-black text-white rounded">1</span>
+              <span className="px-2 py-1">2</span>
+              <span className="px-2 py-1">3</span>
+              <span className="px-2 py-1">...</span>
+            </div>
+            <button className="p-2 bg-white rounded-full shadow hover:bg-gray-200">
+              <FaArrowRight />
+            </button>
+          </div>
         </main>
       </div>
     </div>
