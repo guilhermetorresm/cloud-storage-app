@@ -76,8 +76,8 @@ export default function EditProfile() {
 
               {/* Botões */}
               <div className="flex gap-4 mt-6 justify-center">
-                <button className="bg-black text-white px-6 py-2 rounded-full hover:bg-gray-800">Salvar</button>
-                <button className="bg-black text-white px-6 py-2 rounded-full hover:bg-gray-800">Cancelar</button>
+                <button className="bg-black text-white px-6 py-2 rounded-full hover:bg-gray-800 w-32">Salvar</button>
+                <button className="bg-black text-white px-6 py-2 rounded-full hover:bg-gray-800 w-32">Cancelar</button>
               </div>
 
               {/* Link para alterar senha - MODIFICAÇÃO PRINCIPAL */}
