@@ -3,18 +3,24 @@
 import { useState } from "react";
 import { InputField } from "../Components/ui/input-field";
 import { Button } from "../Components/ui/button";
+import { useNavigate } from "react-router-dom";
 import logo from '../Assets/logo_cortada.png';
+
 
 export default function LoginScreen() {
   const [usuario, setUsuario] = useState("");
   const [senha, setSenha] = useState("");
+  const navigate = useNavigate();
+
 
   const handleLogin = () => {
     console.log("Login:", { usuario, senha });
+    navigate("/dashboard");
   };
 
   const handleRegister = () => {
     console.log("Cadastrar-se");
+    navigate("/register");
   };
 
   return (

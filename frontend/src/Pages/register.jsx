@@ -3,6 +3,8 @@ import { InputField } from "../Components/ui/input-field";
 import { Button } from "../Components/ui/button";
 import TopbarNoSearch from "../Components/TopbarNoSearch";
 import { FaCheck } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
+
 
 export default function Register() {
   const [nome, setNome] = useState("");
@@ -13,6 +15,8 @@ export default function Register() {
   const [erro, setErro] = useState("");
   const [erroSenha, setErroSenha] = useState("");
   const [erroEmail, setErroEmail] = useState("");
+  const navigate = useNavigate();
+
 
   // Validações
   const hasMinLength = senha.length >= 8;
@@ -58,6 +62,7 @@ export default function Register() {
     setErro("");
     setErroSenha("");
     console.log("Cadastro:", { nome, usuario, email, senha, confirmarSenha });
+    navigate("/dashboard");
   };
 
   return (
