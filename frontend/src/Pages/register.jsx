@@ -12,6 +12,7 @@ export default function Register() {
   const [confirmarSenha, setConfirmarSenha] = useState("");
   const [erro, setErro] = useState("");
   const [erroSenha, setErroSenha] = useState("");
+  const [erroEmail, setErroEmail] = useState("");
 
   // Validações
   const hasMinLength = senha.length >= 8;
@@ -21,7 +22,6 @@ export default function Register() {
   const hasNoSpaces = !/\s/.test(senha);
   const hasOnlyASCII = [...senha].every((c) => c.charCodeAt(0) < 128);
   const passwordsMatch = senha === confirmarSenha && confirmarSenha !== "";
-  
 
   const isPasswordValid =
     hasMinLength &&
@@ -34,9 +34,12 @@ export default function Register() {
   const handleCadastro = () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      setErro("Digite um email válido.");
+      setErroEmail("Digite um email válido.");
       return;
+    } else {
+      setErroEmail("");
     }
+
     if (!isPasswordValid || !passwordsMatch) {
       setErroSenha("Corrija os erros da senha antes de continuar.");
       return;
@@ -86,8 +89,14 @@ export default function Register() {
               placeholder="Email"
               icon="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setErroEmail(""); 
+              }}
             />
+            {erroEmail && (
+              <p className="text-red-500 text-xs -mt-2">{erroEmail}</p>
+            )}
 
             <InputField
               type="password"
