@@ -4,7 +4,7 @@ import React from 'react';
 import logo from '../Assets/logo_cortada.png';
 import { FaUser } from 'react-icons/fa';
 
-export default function Topbar() {
+export default function TopbarNoSearch() {
   return (
     <header className="bg-white shadow px-4 py-2 flex items-start justify-between border-b-2 border-gray">
       {/* Logo */}

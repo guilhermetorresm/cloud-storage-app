@@ -1,17 +1,21 @@
-// src/App.js
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import EditProfile from "./Pages/editProfile";
-import EditPassword from "./Pages/editPassword";
-
-function App() {
-  return (
+import {BrowserRouter as Router, Routes, Route} from "react-router-dom";
+import LoginScreen from "./Pages/login";
+import Dashboard from "./Pages/dashboard";
+import Register from "./Pages/register";
+ export default function App(){
+  return(
     <Router>
       <Routes>
-        <Route path="/" element={<EditProfile />} />
-        <Route path="/editPassword" element={<EditPassword />} />
+        {/*Página de Login */}
+        <Route path="/" element={<LoginScreen/>}/>
+        
+        {/*DashBoard */}
+        <Route path="/DashBoard" element={<Dashboard/>}/>
+
+        {/*Cadastro */}
+        <Route path="/Register" element={<Register/>}/>
+
       </Routes>
     </Router>
   );
-}
-
-export default App;
+ }
