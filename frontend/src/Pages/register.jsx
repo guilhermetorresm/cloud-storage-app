@@ -5,9 +5,9 @@ import { FaCheck } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import TopbarDefault from "../Components/TopbarDefault";
 
-
 export default function Register() {
   const [nome, setNome] = useState("");
+  const [sobrenome, setSobrenome] = useState(""); // Novo campo
   const [usuario, setUsuario] = useState("");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -16,7 +16,6 @@ export default function Register() {
   const [erroSenha, setErroSenha] = useState("");
   const [erroEmail, setErroEmail] = useState("");
   const navigate = useNavigate();
-
 
   // Validações
   const hasMinLength = senha.length >= 8;
@@ -49,25 +48,25 @@ export default function Register() {
       return;
     } else setErroSenha("");
 
-    if (!nome || !usuario || !email || !senha || !confirmarSenha) {
+    if (!nome || !sobrenome || !usuario || !email || !senha || !confirmarSenha) {
       setErro("Preencha todos os campos.");
       return;
     }
 
-    // Verificação extra: senha e confirmação devem bater
     if (senha !== confirmarSenha) {
       setErro("As senhas não coincidem.");
       return;
     }
+
     setErro("");
     setErroSenha("");
-    console.log("Cadastro:", { nome, usuario, email, senha, confirmarSenha });
+    console.log("Cadastro:", { nome, sobrenome, usuario, email, senha });
     navigate("/dashboard");
   };
 
   return (
     <div className="flex flex-col min-h-screen">
-      <TopbarDefault/>
+      <TopbarDefault />
 
       <main className="flex-1 bg-gray-100 flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl shadow-lg p-8 w-full max-w-md">
@@ -79,6 +78,15 @@ export default function Register() {
               icon="user"
               value={nome}
               onChange={(e) => setNome(e.target.value)}
+            />
+
+            {/* Novo campo Sobrenome */}
+            <InputField
+              type="text"
+              placeholder="Sobrenome"
+              icon="user"
+              value={sobrenome}
+              onChange={(e) => setSobrenome(e.target.value)}
             />
 
             <InputField
@@ -96,7 +104,7 @@ export default function Register() {
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value);
-                setErroEmail(""); 
+                setErroEmail("");
               }}
             />
             {erroEmail && (
@@ -111,57 +119,25 @@ export default function Register() {
               onChange={(e) => setSenha(e.target.value)}
             />
 
-            {/* Regras de senha */}
             {senha && (
               <div className="text-sm mt-1 space-y-1">
-                <p
-                  className={`${
-                    hasMinLength ? "text-green-600" : "text-gray-500"
-                  }`}
-                >
-                  <FaCheck className="inline mr-1" />
-                  Mínimo 8 caracteres
+                <p className={`${hasMinLength ? "text-green-600" : "text-gray-500"}`}>
+                  <FaCheck className="inline mr-1" /> Mínimo 8 caracteres
                 </p>
-
-                <p
-                  className={`${
-                    hasMaxLength ? "text-green-600" : "text-gray-500"
-                  }`}
-                >
-                  <FaCheck className="inline mr-1" />
-                  Máximo 128 caracteres
+                <p className={`${hasMaxLength ? "text-green-600" : "text-gray-500"}`}>
+                  <FaCheck className="inline mr-1" /> Máximo 128 caracteres
                 </p>
-                <p
-                  className={`${
-                    hasUpperLower ? "text-green-600" : "text-gray-500"
-                  }`}
-                >
-                  <FaCheck className="inline mr-1" />
-                  Letras maiúsculas e minúsculas
+                <p className={`${hasUpperLower ? "text-green-600" : "text-gray-500"}`}>
+                  <FaCheck className="inline mr-1" /> Letras maiúsculas e minúsculas
                 </p>
-                <p
-                  className={`${
-                    hasNumberSpecial ? "text-green-600" : "text-gray-500"
-                  }`}
-                >
-                  <FaCheck className="inline mr-1" />
-                  Números e caractere especial
+                <p className={`${hasNumberSpecial ? "text-green-600" : "text-gray-500"}`}>
+                  <FaCheck className="inline mr-1" /> Números e caractere especial
                 </p>
-                <p
-                  className={`${
-                    hasNoSpaces ? "text-green-600" : "text-gray-500"
-                  }`}
-                >
-                  <FaCheck className="inline mr-1" />
-                  Sem espaços
+                <p className={`${hasNoSpaces ? "text-green-600" : "text-gray-500"}`}>
+                  <FaCheck className="inline mr-1" /> Sem espaços
                 </p>
-                <p
-                  className={`${
-                    hasOnlyASCII ? "text-green-600" : "text-gray-500"
-                  }`}
-                >
-                  <FaCheck className="inline mr-1" />
-                  Apenas caracteres válidos (sem Unicode)
+                <p className={`${hasOnlyASCII ? "text-green-600" : "text-gray-500"}`}>
+                  <FaCheck className="inline mr-1" /> Apenas caracteres válidos (sem Unicode)
                 </p>
               </div>
             )}
@@ -174,16 +150,11 @@ export default function Register() {
               onChange={(e) => setConfirmarSenha(e.target.value)}
             />
 
-            {/* Aviso se senhas não coincidirem */}
             {confirmarSenha && !passwordsMatch && (
-              <p className="text-red-500 text-xs -mt-2">
-                As senhas não coincidem
-              </p>
+              <p className="text-red-500 text-xs -mt-2">As senhas não coincidem</p>
             )}
 
-            {erroSenha && (
-              <p className="text-red-500 text-sm text-center">{erroSenha}</p>
-            )}
+            {erroSenha && <p className="text-red-500 text-sm text-center">{erroSenha}</p>}
 
             {erro && <p className="text-red-500 text-sm text-center">{erro}</p>}
 
