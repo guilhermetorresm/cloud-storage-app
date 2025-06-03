@@ -2,12 +2,17 @@
 import { useState } from "react";
 import { FaUser, FaEnvelope, FaLock, FaPen } from "react-icons/fa";
 import TopbarNoSearch from "../Components/TopbarNoSearch";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function EditProfile() {
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
   const [description, setDescription] = useState("");
+  const navigate = useNavigate();
+
+  const handleDB = () => {
+    navigate("/dashboard");
+  };
 
   return (
     <div className="flex flex-col h-screen">
@@ -76,13 +81,20 @@ export default function EditProfile() {
 
               {/* Botões */}
               <div className="flex gap-4 mt-6 justify-center">
-                <button className="bg-black text-white px-6 py-2 rounded-full hover:bg-gray-800 w-32">Salvar</button>
-                <button className="bg-black text-white px-6 py-2 rounded-full hover:bg-gray-800 w-32">Cancelar</button>
+                <button className="bg-black text-white px-6 py-2 rounded-full hover:bg-gray-800 w-32">
+                  Salvar
+                </button>
+                <button
+                  onClick={handleDB}
+                  className="bg-black text-white px-6 py-2 rounded-full hover:bg-gray-800 w-32"
+                >
+                  Cancelar
+                </button>
               </div>
 
               {/* Link para alterar senha - MODIFICAÇÃO PRINCIPAL */}
               <div className="mt-6 text-center">
-                <Link 
+                <Link
                   to="/editPassword"
                   className="inline-flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-black hover:bg-gray-100 rounded-full transition-colors"
                 >

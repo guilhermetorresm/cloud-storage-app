@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { InputField } from "../Components/ui/input-field";
 import { Button } from "../Components/ui/button";
-import TopbarNoSearch from "../Components/TopbarNoSearch";
 import { FaCheck } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+import TopbarDefault from "../Components/TopbarDefault";
 
 
 export default function Register() {
@@ -67,7 +67,7 @@ export default function Register() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <TopbarNoSearch />
+      <TopbarDefault/>
 
       <main className="flex-1 bg-gray-100 flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl shadow-lg p-8 w-full max-w-md">

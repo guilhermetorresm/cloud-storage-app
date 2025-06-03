@@ -1,9 +1,17 @@
 // src/components/Topbar.jsx
-import React from 'react';
-import { Search } from 'lucide-react';
-import logo from '../Assets/logo_cortada.png';
+import React from "react";
+import { Search } from "lucide-react";
+import logo from "../Assets/logo_cortada.png";
+import { useNavigate } from "react-router-dom";
+import { FaUser } from "react-icons/fa";
 
 export default function Topbar() {
+  const navigate = useNavigate();
+
+  const handleProfile = () => {
+    navigate("/editProfile");
+  };
+
   return (
     <header className="bg-white shadow px-4 py-2 flex items-start justify-between border-b-2 border-gray">
       {/* Logo */}
@@ -26,8 +34,12 @@ export default function Topbar() {
 
       {/* Ícone de perfil */}
       <div className="flex items-center space-x-4">
-        <button className="rounded-full bg-gray-200 p-2 hover:bg-gray-300">
-          <span role="img" aria-label="profile">👤</span>
+        <button
+          onClick={handleProfile}
+          className="rounded-full bg-gray-200 p-2 hover:bg-gray-300"
+        >
+          <FaUser />
+          <span role="img" aria-label="profile"></span>
         </button>
       </div>
     </header>
