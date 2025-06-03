@@ -146,7 +146,7 @@ export default function EditPassword() {
 
             {/* Voltar */}
             <div className="text-center">
-              <Link to="/dashboard" className="text-black hover:underline text-sm">
+              <Link to="/editProfile" className="text-black hover:underline text-sm">
                 Voltar ao perfil
               </Link>
             </div>

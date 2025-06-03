@@ -1,11 +1,11 @@
-// src/Pages/editProfile.js
 import { useState } from "react";
 import { FaUser, FaEnvelope, FaLock, FaPen } from "react-icons/fa";
 import TopbarNoSearch from "../Components/TopbarNoSearch";
 import { Link, useNavigate } from "react-router-dom";
 
 export default function EditProfile() {
-  const [fullName, setFullName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [username, setUsername] = useState("");
   const [description, setDescription] = useState("");
   const navigate = useNavigate();
@@ -20,7 +20,6 @@ export default function EditProfile() {
       <div className="flex items-center justify-center h-full overflow-y-auto bg-gradient-to-r from-white to-gray-100">
         {/* Box geral */}
         <div className="max-w-4xl mx-auto w-full h-auto bg-white border border-gray-300 rounded-xl shadow-md p-8 flex flex-col gap-8">
-          {/* Título da box centralizado */}
           <h2 className="w-full h-0.5 text-3xl font-bold mb-6 text-center">
             Informações da conta:
           </h2>
@@ -50,9 +49,20 @@ export default function EditProfile() {
                   <FaUser className="absolute left-3 top-3 text-gray-500" />
                   <input
                     type="text"
-                    placeholder="Nome Completo"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Nome"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border rounded-full"
+                  />
+                </div>
+
+                <div className="relative">
+                  <FaUser className="absolute left-3 top-3 text-gray-500" />
+                  <input
+                    type="text"
+                    placeholder="Sobrenome"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
                     className="w-full pl-10 pr-4 py-2 border rounded-full"
                   />
                 </div>
@@ -92,7 +102,6 @@ export default function EditProfile() {
                 </button>
               </div>
 
-              {/* Link para alterar senha - MODIFICAÇÃO PRINCIPAL */}
               <div className="mt-6 text-center">
                 <Link
                   to="/editPassword"
