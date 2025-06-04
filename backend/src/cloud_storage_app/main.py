@@ -12,6 +12,7 @@ from starlette.exceptions import HTTPException
 from cloud_storage_app.config import get_settings
 from cloud_storage_app.infrastructure.database.connection import init_database, close_database
 from cloud_storage_app.presentation.api.v1 import health
+from cloud_storage_app.presentation.api.v1 import auth
 from cloud_storage_app.presentation.middleware.error_handler import (
     http_exception_handler,
     validation_exception_handler,
@@ -154,6 +155,12 @@ app.include_router(
     health.router,
     prefix="/health",
     tags=["Health Check"]
+)
+
+app.include_router(
+    auth.router,
+    prefix="/auth",
+    tags=["Authentication"]
 )
 
 
