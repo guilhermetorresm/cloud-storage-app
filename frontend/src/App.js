@@ -4,6 +4,7 @@ import Dashboard from "./Pages/dashboard";
 import Register from "./Pages/register";
 import EditPassword from "./Pages/editPassword";
 import EditProfile from "./Pages/editProfile";
+import ProfileView from "./Pages/profileView";
  export default function App(){
   return(
     <Router>
@@ -22,6 +23,10 @@ import EditProfile from "./Pages/editProfile";
 
         {/*Editar Senha */}
         <Route path="/EditPassword" element={<EditPassword/>}/>
+
+         {/*Visualizar perfil */}
+         <Route path="/ProfileView" element={<ProfileView/>}/>
+
 
       </Routes>
     </Router>

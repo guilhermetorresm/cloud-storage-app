@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { FaUser, FaEnvelope, FaLock, FaPen } from "react-icons/fa";
 import TopbarNoSearch from "../Components/TopbarNoSearch";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 export default function EditProfile() {
   const [fullName, setFullName] = useState("");
@@ -10,12 +10,8 @@ export default function EditProfile() {
   const [description, setDescription] = useState("");
   const navigate = useNavigate();
 
-  const handleDB = () => {
-    navigate("/dashboard");
-  };
-
-  const handleVerPerfil = () => {
-    navigate("/profileView");
+  const handleEditarPerfil = () => {
+    navigate("/editProfile");
   };
 
   return (
@@ -34,46 +30,70 @@ export default function EditProfile() {
             {/* Lado Esquerdo */}
             <div className="flex flex-col items-center md:w-1/3">
               <div className="w-40 h-40 rounded-full bg-gray-300 relative">
-                <button className="absolute bottom-2 right-2 transform translate-x-1/2 bg-white px-4 py-1 rounded-full border flex items-center gap-2 shadow hover:bg-gray-100">
-                  <FaPen className="text-sm" />
-                  Editar
-                </button>
+                {/* Foto de perfil */}
               </div>
+              <div className="w-full">
+                <label
+                htmlFor="descricao"
+                className="text-sm text-gray-500 mb-px block"
+              >
+                Descrição
+              </label>
               <textarea
-                className="mt-6 w-full border rounded-xl p-3 resize-none min-h-[100px]"
+                className=" w-full border rounded-xl p-3 resize-none min-h-[100px]"
                 placeholder="+ Descrição"
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                disabled
               />
+              </div>
+              
             </div>
 
             {/* Lado Direito */}
             <div className="flex-1">
-              <div className="flex flex-col gap-4">
-                <div className="relative">
-                  <FaUser className="absolute left-3 top-3 text-gray-500" />
+              <div className="flex flex-col">
+                {/* Nome Completo */}
+                <label
+                  htmlFor="fullName"
+                  className="text-sm text-gray-500 mb-px"
+                >
+                  Nome Completo
+                </label>
+                <div className="relative mb-4 opacity-60">
+                  <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                   <input
                     type="text"
                     placeholder="Nome Completo"
                     value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border rounded-full"
+                    disabled
+                    className="w-full pl-10 pr-4 py-2 border rounded-full bg-gray-200 cursor-not-allowed"
                   />
                 </div>
 
-                <div className="relative">
-                  <FaUser className="absolute left-3 top-3 text-gray-500" />
+                {/* Usuário */}
+                <label
+                  htmlFor="username"
+                  className="text-sm text-gray-500 mb-px"
+                >
+                  Usuário
+                </label>
+                <div className="relative mb-4 opacity-60">
+                  <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 " />
                   <input
                     type="text"
                     placeholder="UserName"
                     value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border rounded-full"
+                    disabled
+                    className="w-full pl-10 pr-4 py-2 border rounded-full bg-gray-200 cursor-not-allowed"
                   />
                 </div>
 
+                {/* Email */}
+                <label htmlFor="email" className="text-sm text-gray-500 mb-px">
+                  Email
+                </label>
                 <div className="relative opacity-60">
-                  <FaEnvelope className="absolute left-3 top-3 text-gray-500" />
+                  <FaEnvelope className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                   <input
                     type="email"
                     value="usuario@email.com"
@@ -83,31 +103,14 @@ export default function EditProfile() {
                 </div>
               </div>
 
-              {/* Botões */}
+              {/* Botão */}
               <div className="flex gap-4 mt-6 justify-center">
                 <button
-                  onClick={handleVerPerfil}
+                  onClick={handleEditarPerfil}
                   className="bg-black text-white px-6 py-2 rounded-full hover:bg-gray-800 w-32"
                 >
-                  Salvar
+                  Editar Perfil
                 </button>
-                <button
-                  onClick={handleDB}
-                  className="bg-black text-white px-6 py-2 rounded-full hover:bg-gray-800 w-32"
-                >
-                  Cancelar
-                </button>
-              </div>
-
-              {/* Link para alterar senha - MODIFICAÇÃO PRINCIPAL */}
-              <div className="mt-6 text-center">
-                <Link
-                  to="/editPassword"
-                  className="inline-flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-black hover:bg-gray-100 rounded-full transition-colors"
-                >
-                  <FaLock className="text-sm" />
-                  <span className="font-medium">Alterar senha</span>
-                </Link>
               </div>
             </div>
           </div>
