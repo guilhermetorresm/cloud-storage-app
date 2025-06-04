@@ -1,0 +1,24 @@
+FROM python:3.12.3-slim
+
+WORKDIR /app
+ENV UV_PROJECT_ENVIRONMENT="/usr/local/"
+ENV UV_COMPILE_BYTECODE=1
+
+COPY backend/pyproject.toml .
+COPY backend/uv.lock .
+
+RUN pip install --no-cache-dir uv
+RUN uv sync --frozen --group dev
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
+
+COPY backend/src/ ./
+COPY backend/alembic.ini .
+COPY backend/alembic ./alembic
+COPY backend/scripts ./scripts
+
+EXPOSE 8080
+
+CMD ["uvicorn", "cloud_storage_app.main:app", "--reload", "--host", "0.0.0.0", "--port", "8080"]

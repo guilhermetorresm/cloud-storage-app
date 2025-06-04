@@ -1,0 +1,38 @@
+FROM python:3.12.3-slim-bullseye AS builder
+
+WORKDIR /app
+ENV UV_PROJECT_ENVIRONMENT="/usr/local/"
+ENV UV_COMPILE_BYTECODE=1
+
+COPY pyproject.toml .
+COPY uv.lock .
+
+RUN pip install --no-cache-dir uv
+RUN uv sync --frozen --no-group dev
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates gnupg curl \
+  && rm -rf /var/lib/apt/lists/*
+
+# Estágio final para reduzir tamanho da imagem
+FROM python:3.12.3-slim-bullseye
+
+WORKDIR /app
+
+# Copiar apenas os pacotes python instalados do estágio builder
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Copiar código da aplicação
+COPY src/cloud_storage_app/ ./cloud_storage_app/
+
+# Criar diretório de dados e ajustar permissões
+RUN mkdir -p /app/data && chmod 777 /app/data
+
+EXPOSE 8080
+
+# Configurações de segurança
+USER nobody
+
+# Usar uvicorn diretamente em vez de gunicorn para simplificar
+CMD ["uvicorn", "cloud_storage_app.main:app", "--host", "0.0.0.0", "--port", "8080"] 
