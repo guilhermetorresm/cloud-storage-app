@@ -6,7 +6,7 @@ services:
       dockerfile: backend/Dockerfiles/Dockerfile.dev
     container_name: backend
     volumes:
-      - ./backend/src/cloud-storage-app:/app/cloud-storage-app
+      - ./backend/src/cloud_storage_app:/app/cloud_storage_app
     ports:
       - "8080:8080"
     environment:

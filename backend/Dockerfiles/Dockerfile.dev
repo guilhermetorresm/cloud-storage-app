@@ -13,8 +13,8 @@ RUN uv sync --frozen --group dev
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-COPY backend/src/cloud-storage-app/ ./cloud-storage-app/
+COPY backend/src/cloud_storage_app/ ./cloud_storage_app/
 
 EXPOSE 8080
 
-CMD ["uvicorn", "cloud-storage-app.main:app", "--reload", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "cloud_storage_app.main:app", "--reload", "--host", "0.0.0.0", "--port", "8080"]

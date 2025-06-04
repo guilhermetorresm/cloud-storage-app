@@ -3,18 +3,26 @@ Configurações da aplicação Cloud Storage.
 Utiliza Pydantic Settings para validação e carregamento de variáveis de ambiente.
 """
 
+import logging
+import os
 from functools import lru_cache
 from typing import Optional, List, Any
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 import json
+from pathlib import Path
+
+
+# Configuração do logger
+logger = logging.getLogger(__name__)
+
 
 
 class DatabaseSettings(BaseSettings):
     """Configurações específicas do banco de dados"""
     
     # Configurações individuais do PostgreSQL
-    postgres_server: str = Field(default="localhost", env="POSTGRES_SERVER")
+    postgres_server: str = Field(default="db", env="POSTGRES_SERVER")
     postgres_user: str = Field(default="postgres", env="POSTGRES_USER")
     postgres_password: str = Field(default="postgres", env="POSTGRES_PASSWORD")
     postgres_db: str = Field(default="cloud_storage_db", env="POSTGRES_DB")
@@ -49,7 +57,7 @@ class DatabaseSettings(BaseSettings):
         "env_file_encoding": "utf-8",
         "extra": "ignore"
     }
-
+    
 
 class AuthSettings(BaseSettings):
     """Configurações de autenticação"""
@@ -59,9 +67,10 @@ class AuthSettings(BaseSettings):
     access_token_expire_minutes: int = Field(default=30, env="ACCESS_TOKEN_EXPIRE_MINUTES")
     refresh_token_expire_days: int = Field(default=7, env="REFRESH_TOKEN_EXPIRE_DAYS")
     
-    model_config = {
+    model_config = model_config = {
         "env_file": ".env",
-        "case_sensitive": False
+        "case_sensitive": False,
+        "extra": "ignore"
     }
 
 
@@ -74,11 +83,11 @@ class StorageSettings(BaseSettings):
     s3_bucket_name: str = Field(env="S3_BUCKET_NAME")
     s3_endpoint_url: Optional[str] = Field(default=None, env="S3_ENDPOINT_URL")  # Para MinIO local
     
-    model_config = {
+    model_config = model_config = {
         "env_file": ".env",
-        "case_sensitive": False
+        "case_sensitive": False,
+        "extra": "ignore"
     }
-
 
 class AppSettings(BaseSettings):
     # Informações da aplicação
@@ -142,9 +151,8 @@ class AppSettings(BaseSettings):
         """Retorna os tipos de arquivo permitidos como lista"""
         return self.allowed_file_types
     
-    model_config = {
+    model_config = model_config = model_config = {
         "env_file": ".env",
-        "env_file_encoding": "utf-8",
         "case_sensitive": False,
         "extra": "ignore"
     }
@@ -159,9 +167,10 @@ class Settings(BaseSettings):
     storage: StorageSettings = Field(default_factory=StorageSettings)
     app: AppSettings = Field(default_factory=AppSettings)
     
-    model_config = {
+    model_config = model_config = model_config = {
         "env_file": ".env",
-        "case_sensitive": False
+        "case_sensitive": False,
+        "extra": "ignore"
     }
 
 
@@ -171,7 +180,18 @@ def get_settings() -> Settings:
     Retorna as configurações da aplicação com cache.
     Usar @lru_cache() garante que as configurações sejam carregadas apenas uma vez.
     """
-    return Settings()
+    settings = Settings()
+    
+    # Log das configurações carregadas
+    logger.info("Configurações carregadas:")
+    logger.info(f"Database URL: {settings.database.get_database_url()}")
+    logger.info(f"Environment: {settings.app.environment}")
+    logger.info(f"Debug mode: {settings.app.debug}")
+    logger.info(f"Database Server: {settings.database.postgres_server}")
+    logger.info(f"Database Name: {settings.database.postgres_db}")
+    logger.info(f"Database User: {settings.database.postgres_user}")
+    
+    return settings
 
 
 # Instância global das configurações

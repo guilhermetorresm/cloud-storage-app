@@ -17,7 +17,8 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.pool import NullPool
 
-from ...config import get_settings
+from cloud_storage_app.config import get_settings
+
 
 logger = logging.getLogger(__name__)
 
