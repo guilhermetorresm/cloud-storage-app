@@ -34,7 +34,7 @@ class DatabaseManager:
         self._engine: AsyncEngine | None = None
         self._session_factory: async_sessionmaker[AsyncSession] | None = None
         self._settings = get_settings()
-    0
+    
     @property
     def engine(self) -> AsyncEngine:
         """Retorna a engine do SQLAlchemy"""

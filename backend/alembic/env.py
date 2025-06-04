@@ -1,7 +1,9 @@
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+import asyncio
+from logging.config import fileConfig
+from sqlalchemy import engine_from_config, pool
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 from alembic import context
 
@@ -14,10 +16,9 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# add your model's MetaData object here
-# for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
+from backend.src.cloud_storage_app.infrastructure.database.connection import Base
+from backend.src.cloud_storage_app.infrastructure.database.models.user_model import User
+
 target_metadata = None
 
 # other values from the config, defined by the needs of env.py,
