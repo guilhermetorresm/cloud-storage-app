@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { FaUser, FaEnvelope, FaLock, FaPen } from "react-icons/fa";
 import TopbarNoSearch from "../Components/TopbarNoSearch";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function EditProfile() {
   const [fullName, setFullName] = useState("");
@@ -34,19 +34,18 @@ export default function EditProfile() {
               </div>
               <div className="w-full">
                 <label
-                htmlFor="descricao"
-                className="text-sm text-gray-500 mb-px block"
-              >
-                Descrição
-              </label>
-              <textarea
-                className=" w-full border rounded-xl p-3 resize-none min-h-[100px]"
-                placeholder="+ Descrição"
-                value={description}
-                disabled
-              />
+                  htmlFor="descricao"
+                  className="text-sm text-gray-500 mb-px block"
+                >
+                  Descrição
+                </label>
+                <textarea
+                  className=" w-full border rounded-xl p-3 resize-none min-h-[100px]"
+                  placeholder="+ Descrição"
+                  value={description}
+                  disabled
+                />
               </div>
-              
             </div>
 
             {/* Lado Direito */}
@@ -107,10 +106,20 @@ export default function EditProfile() {
               <div className="flex gap-4 mt-6 justify-center">
                 <button
                   onClick={handleEditarPerfil}
-                  className="bg-black text-white px-6 py-2 rounded-full hover:bg-gray-800 w-32"
+                  className="bg-black text-white px-6 py-2 rounded-full hover:bg-gray-800 w-80"
                 >
                   Editar Perfil
                 </button>
+              </div>
+              {/* Link para alterar senha - MODIFICAÇÃO PRINCIPAL */}
+              <div className="flex gap-4 mt-6 justify-center">
+                <Link
+                  to="/editPassword"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2 text-gray-700 hover:text-black hover:bg-gray-100 rounded-full transition-colors w-80"
+                >
+                  <FaLock className="text-sm" />
+                  <span className="font-medium">Alterar senha</span>
+                </Link>
               </div>
             </div>
           </div>
