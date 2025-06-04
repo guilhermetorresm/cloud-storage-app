@@ -6,13 +6,13 @@ services:
       dockerfile: backend/Dockerfiles/Dockerfile.dev
     container_name: backend
     volumes:
-      - ./backend/src/cloud-storage-app:/app/cloud-storage-app
+      - ./backend/src/cloud_storage_app:/app/cloud_storage_app
     ports:
       - "8080:8080"
     environment:
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
     env_file:
-      - .env
+      - backend/.env
     depends_on:
       - db
     networks:
@@ -30,7 +30,7 @@ services:
     image: postgres:15-alpine
     container_name: postgres_db
     env_file:
-      - .env
+      - backend/.env
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -38,7 +38,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT}:5432"
     networks:
       - app-network
   

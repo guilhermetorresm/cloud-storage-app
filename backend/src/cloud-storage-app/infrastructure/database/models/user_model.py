@@ -1,5 +1,0 @@
-# app/infrastructure/db/models/user_model.py
-from sqlalchemy import Column, Integer, String
-from sqlalchemy.orm import declarative_base
-
-Base = declarative_base()
