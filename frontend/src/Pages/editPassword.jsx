@@ -68,29 +68,6 @@ export default function EditPassword() {
                   {showNewPassword ? <FaEye /> : <FaEyeSlash />}
                 </button>
               </div>
-
-             {/* <div className="mt-2 space-y-1">
-                <div className={`flex items-center text-sm ${hasMinLength ? 'text-green-600' : 'text-gray-500'}`}>
-                  <FaCheck className={`mr-2 ${hasMinLength ? 'text-green-500' : 'text-gray-300'}`} />
-                  <span>Mínimo 8 caracteres</span>
-                </div>
-                <div className={`flex items-center text-sm ${hasUpperLower ? 'text-green-600' : 'text-gray-500'}`}>
-                  <FaCheck className={`mr-2 ${hasUpperLower ? 'text-green-500' : 'text-gray-300'}`} />
-                  <span>Letras maiúsculas e minúsculas</span>
-                </div>
-                <div className={`flex items-center text-sm ${hasNumberSpecial ? 'text-green-600' : 'text-gray-500'}`}>
-                  <FaCheck className={`mr-2 ${hasNumberSpecial ? 'text-green-500' : 'text-gray-300'}`} />
-                  <span>Números e caracteres especiais</span>
-                </div>
-                <div className={`flex items-center text-sm ${hasNoSpaces ? 'text-green-600' : 'text-gray-500'}`}>
-                  <FaCheck className={`mr-2 ${hasNoSpaces ? 'text-green-500' : 'text-gray-300'}`} />
-                  <span>Sem espaços</span>
-                </div>
-                <div className={`flex items-center text-sm ${hasOnlyASCII ? 'text-green-600' : 'text-gray-500'}`}>
-                  <FaCheck className={`mr-2 ${hasOnlyASCII ? 'text-green-500' : 'text-gray-300'}`} />
-                  <span>Apenas caracteres válidos (sem Unicode)</span>
-                </div>
-              </div>*/}
             </div> 
             {/* Regras de senha */}
                         {newPassword && (
@@ -102,9 +79,7 @@ export default function EditPassword() {
                             >
                               <FaCheck className="inline mr-1" />
                               Mínimo 8 caracteres
-                            </p>
-
-            
+                            </p>            
                             <p
                               className={`${
                                 hasMaxLength ? "text-green-600" : "text-gray-500"
@@ -203,7 +178,7 @@ export default function EditPassword() {
             {/* Voltar */}
             <div className="text-center">
               <Link to="/editProfile" className="text-black hover:underline text-sm">
-                Voltar ao perfil
+                Voltar à edição de perfil
               </Link>
             </div>
           </div>
