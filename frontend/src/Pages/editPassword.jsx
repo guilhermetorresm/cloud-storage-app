@@ -12,6 +12,7 @@ export default function EditPassword() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const hasMinLength = newPassword.length >= 8;
+  const hasMaxLength = newPassword.length <= 128;
   const hasUpperLower = /[A-Z]/.test(newPassword) && /[a-z]/.test(newPassword);
   const hasNumberSpecial = /[0-9]/.test(newPassword) && /[^A-Za-z0-9]/.test(newPassword);
   const hasNoSpaces = !/\s/.test(newPassword);
@@ -68,7 +69,7 @@ export default function EditPassword() {
                 </button>
               </div>
 
-              <div className="mt-2 space-y-1">
+             {/* <div className="mt-2 space-y-1">
                 <div className={`flex items-center text-sm ${hasMinLength ? 'text-green-600' : 'text-gray-500'}`}>
                   <FaCheck className={`mr-2 ${hasMinLength ? 'text-green-500' : 'text-gray-300'}`} />
                   <span>Mínimo 8 caracteres</span>
@@ -89,8 +90,63 @@ export default function EditPassword() {
                   <FaCheck className={`mr-2 ${hasOnlyASCII ? 'text-green-500' : 'text-gray-300'}`} />
                   <span>Apenas caracteres válidos (sem Unicode)</span>
                 </div>
-              </div>
-            </div>
+              </div>*/}
+            </div> 
+            {/* Regras de senha */}
+                        {newPassword && (
+                          <div className="text-sm mt-1 space-y-1">
+                            <p
+                              className={`${
+                                hasMinLength ? "text-green-600" : "text-gray-500"
+                              }`}
+                            >
+                              <FaCheck className="inline mr-1" />
+                              Mínimo 8 caracteres
+                            </p>
+
+            
+                            <p
+                              className={`${
+                                hasMaxLength ? "text-green-600" : "text-gray-500"
+                              }`}
+                            >
+                              <FaCheck className="inline mr-1" />
+                              Máximo 128 caracteres
+                            </p>
+                            <p
+                              className={`${
+                                hasUpperLower ? "text-green-600" : "text-gray-500"
+                              }`}
+                            >
+                              <FaCheck className="inline mr-1" />
+                              Letras maiúsculas e minúsculas
+                            </p>
+                            <p
+                              className={`${
+                                hasNumberSpecial ? "text-green-600" : "text-gray-500"
+                              }`}
+                            >
+                              <FaCheck className="inline mr-1" />
+                              Números e caractere especial
+                            </p>
+                            <p
+                              className={`${
+                                hasNoSpaces ? "text-green-600" : "text-gray-500"
+                              }`}
+                            >
+                              <FaCheck className="inline mr-1" />
+                              Sem espaços
+                            </p>
+                            <p
+                              className={`${
+                                hasOnlyASCII ? "text-green-600" : "text-gray-500"
+                              }`}
+                            >
+                              <FaCheck className="inline mr-1" />
+                              Apenas caracteres válidos (sem Unicode)
+                            </p>
+                          </div>
+                        )}
 
             {/* Confirmar nova senha */}
             <div>

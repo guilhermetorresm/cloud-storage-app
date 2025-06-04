@@ -9,7 +9,7 @@ export default function Topbar() {
   const navigate = useNavigate();
 
   const handleProfile = () => {
-    navigate("/editProfile");
+    navigate("/profileView");
   };
 
   return (
