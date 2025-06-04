@@ -8,8 +8,8 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException
 
-from .config import get_settings
-from .infrastructure.database.connection import init_database, close_database
+from cloud_storage_app.config import get_settings
+from cloud_storage_app.infrastructure.database.connection import init_database, close_database
 from .presentation.api.v1 import health
 from .presentation.middleware.error_handler import (
     http_exception_handler,

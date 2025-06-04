@@ -5,7 +5,7 @@ from ..value_objects import (
     UserId, Email, Username, HashedPassword, ProfilePicture, UserDescription, FirstName, LastName
 )
 from ..events.domain_event import DomainEvent
-from ..events.user_domain_event import (
+from ..events.user_domain_events import (
     UserCreated, UserPasswordChanged, UserDeactivated
 )
 

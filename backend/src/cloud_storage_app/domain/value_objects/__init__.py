@@ -1,21 +1,24 @@
-from .user_id import UserId
+"""
+Domain value objects
+"""
 from .email import Email
-from .username import Username
-from .hashed_password import HashedPassword
-from .password import Password
 from .first_name import FirstName
 from .last_name import LastName
-from .profile_picture import ProfilePicture
+from .username import Username
+from .password import Password
+from .hashed_password import HashedPassword
+from .user_id import UserId
 from .user_description import UserDescription
+from .profile_picture import ProfilePicture
 
 __all__ = [
-    'UserId',
-    'Email',
-    'Username',
-    'HashedPassword',
-    'Password',
-    'FirstName',
-    'LastName',
-    'ProfilePicture',
-    'UserDescription'
+    "Email",
+    "FirstName", 
+    "LastName",
+    "Username",
+    "Password",
+    "HashedPassword",
+    "UserId",
+    "UserDescription",
+    "ProfilePicture",
 ]
