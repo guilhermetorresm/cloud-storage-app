@@ -14,6 +14,10 @@ export default function EditProfile() {
     navigate("/dashboard");
   };
 
+  const handleVerPerfil = () => {
+    navigate("/profileView");
+  };
+
   return (
     <div className="flex flex-col h-screen">
       <TopbarNoSearch />
@@ -91,7 +95,10 @@ export default function EditProfile() {
 
               {/* Botões */}
               <div className="flex gap-4 mt-6 justify-center">
-                <button className="bg-black text-white px-6 py-2 rounded-full hover:bg-gray-800 w-32">
+                <button
+                  onClick={handleVerPerfil}
+                  className="bg-black text-white px-6 py-2 rounded-full hover:bg-gray-800 w-32"
+                >
                   Salvar
                 </button>
                 <button
