@@ -7,10 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from alembic import context
 
-from src.cloud_storage_app.config import get_settings
+from cloud_storage_app.config import get_settings
 
-from src.cloud_storage_app.infrastructure.database.connection import Base
-from src.cloud_storage_app.infrastructure.database.models import UserModel
+from cloud_storage_app.infrastructure.database.connection import Base
+from cloud_storage_app.infrastructure.database.models import UserModel
 
 
 # this is the Alembic Config object, which provides

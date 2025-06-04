@@ -1,10 +1,11 @@
 import logging
+import time
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException
 
@@ -37,19 +38,44 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     # Startup
     logger.info("Starting Cloud Storage API...")
+    logger.info(f"Environment: {settings.app.environment}")
+    logger.info(f"Debug mode: {settings.app.debug}")
     
     try:
         # Inicializar banco de dados
         await init_database()
-        logger.info("Database initialized successfully")
+        logger.info("Database connection initialized")
+        
+        # Fazer verificação real da conexão
+        from cloud_storage_app.infrastructure.database.connection import db_manager
+        
+        logger.info("Testing database connection...")
+        is_healthy = await db_manager.health_check()
+        
+        if is_healthy:
+            logger.info("✅ Database connection test successful")
+        else:
+            logger.error("❌ Database connection test failed")
+            raise RuntimeError("Database connection test failed during startup")
         
         # Outras inicializações podem ser adicionadas aqui
         # Ex: inicializar cache Redis, conectar com S3, etc.
         
-        logger.info("Application startup completed")
+        logger.info("Application startup completed successfully")
         
     except Exception as e:
         logger.error(f"Failed to start application: {e}")
+        logger.error(f"Error type: {type(e).__name__}")
+        logger.error(f"Error details: {str(e)}")
+        
+        # Log detalhado das configurações para debug
+        logger.error("Current database configuration:")
+        logger.error(f"  - POSTGRES_SERVER: {settings.database.postgres_server}")
+        logger.error(f"  - POSTGRES_PORT: {settings.database.postgres_port}")
+        logger.error(f"  - POSTGRES_DB: {settings.database.postgres_db}")
+        logger.error(f"  - POSTGRES_USER: {settings.database.postgres_user}")
+        logger.error(f"  - DATABASE_URL configured: {settings.database.database_url is not None}")
+        
         raise
     
     # Aplicação está rodando

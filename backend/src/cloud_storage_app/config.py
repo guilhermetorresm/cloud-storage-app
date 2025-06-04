@@ -4,13 +4,10 @@ Utiliza Pydantic Settings para validação e carregamento de variáveis de ambie
 """
 
 import logging
-import os
 from functools import lru_cache
 from typing import Optional, List, Any
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
-import json
-from pathlib import Path
 
 
 # Configuração do logger
@@ -49,7 +46,8 @@ class DatabaseSettings(BaseSettings):
             return self.database_url
         
         # Constrói a URL com o driver asyncpg
-        return f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}@{self.postgres_server}:{self.postgres_port}/{self.postgres_db}"
+        internal_port = 5432 if self.postgres_server == "db" else self.postgres_port
+        return f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}@{self.postgres_server}:{internal_port}/{self.postgres_db}"
     
     model_config = {
         "env_file": ".env",

@@ -64,7 +64,6 @@ class DatabaseManager:
                 "pool_pre_ping": True,  # Verifica conexões antes de usar
                 "future": True,  # Usar API futura do SQLAlchemy
             }
-
             
             
             # Para ambiente de teste, usar NullPool para evitar problemas

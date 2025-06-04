@@ -15,6 +15,9 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
 
 COPY backend/src/ ./
+COPY backend/alembic.ini .
+COPY backend/alembic ./alembic
+COPY backend/scripts ./scripts
 
 EXPOSE 8080
 
