@@ -10,13 +10,13 @@ from starlette.exceptions import HTTPException
 
 from cloud_storage_app.config import get_settings
 from cloud_storage_app.infrastructure.database.connection import init_database, close_database
-from .presentation.api.v1 import health
-from .presentation.middleware.error_handler import (
+from cloud_storage_app.presentation.api.v1 import health
+from cloud_storage_app.presentation.middleware.error_handler import (
     http_exception_handler,
     validation_exception_handler,
     general_exception_handler
 )
-from .shared.exceptions import CloudStorageException
+from cloud_storage_app.shared.exceptions import CloudStorageException
 
 # Configurar logging
 logging.basicConfig(
