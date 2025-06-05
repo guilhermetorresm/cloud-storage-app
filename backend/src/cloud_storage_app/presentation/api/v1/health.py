@@ -11,9 +11,10 @@ from typing import Dict, Any, List, Tuple
 from fastapi import APIRouter, status, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from dependency_injector.wiring import inject, Provide
 
-from ....infrastructure.database.connection import get_database_session, db_manager
 from ....config import get_settings, AppSettings
+from ....infrastructure.di.container import Container
 
 
 logger = logging.getLogger(__name__)
@@ -22,7 +23,10 @@ settings = get_settings()
 
 # --- Funções de Verificação Modulares ---
 
-async def check_database() -> Tuple[str, Dict[str, Any]]:
+@inject
+async def check_database(
+    db_manager = Depends(Provide[Container.database_manager])
+) -> Tuple[str, Dict[str, Any]]:
     """Verifica a conectividade com o banco de dados."""
     try:
         is_healthy = await db_manager.health_check()
@@ -34,16 +38,19 @@ async def check_database() -> Tuple[str, Dict[str, Any]]:
         logger.error(f"Database health check failed: {e}")
         return "unhealthy", {"status": "unhealthy", "message": f"Database check error: {str(e)}"}
 
-async def check_critical_configurations(config: AppSettings) -> Tuple[str, Dict[str, Any]]:
+@inject
+async def check_critical_configurations(
+    settings: AppSettings = Depends(Provide[Container.settings])
+) -> Tuple[str, Dict[str, Any]]:
     """Verifica se configurações críticas estão definidas corretamente."""
     issues = []
     
     # Exemplo: Chave secreta não deve ser o valor padrão
-    if not config.auth.secret_key or config.auth.secret_key == "your-super-secret-key-change-this-in-production-and-make-it-very-long":
+    if not settings.auth.secret_key or settings.auth.secret_key == "your-super-secret-key-change-this-in-production-and-make-it-very-long":
         issues.append("AUTH_SECRET_KEY is not properly configured.")
     
     # Exemplo: Nome do bucket S3 deve estar presente
-    if not config.storage.s3_bucket_name:
+    if not settings.storage.s3_bucket_name:
         issues.append("S3_BUCKET_NAME is not configured.")
         
     if issues:
@@ -56,7 +63,10 @@ async def check_critical_configurations(config: AppSettings) -> Tuple[str, Dict[
 # --- Endpoints ---
 
 @router.get("/", status_code=status.HTTP_200_OK, tags=["Health"])
-async def health_check() -> Dict[str, Any]:
+@inject
+async def health_check(
+    settings: AppSettings = Depends(Provide[Container.settings])
+) -> Dict[str, Any]:
     """Health check básico que apenas confirma que a aplicação está online."""
     return {
         "status": "healthy",
@@ -67,7 +77,10 @@ async def health_check() -> Dict[str, Any]:
 
 
 @router.get("/detailed", status_code=status.HTTP_200_OK, tags=["Health"])
-async def detailed_health_check() -> JSONResponse:
+@inject
+async def detailed_health_check(
+    settings: AppSettings = Depends(Provide[Container.settings])
+) -> JSONResponse:
     """
     Executa um health check detalhado, verificando todas as dependências críticas
     como banco de dados e configurações.
@@ -75,7 +88,7 @@ async def detailed_health_check() -> JSONResponse:
     # Lista de verificações a serem executadas concorrentemente
     checks_to_run = [
         check_database(),
-        check_critical_configurations(settings)
+        check_critical_configurations()
     ]
     
     # Executa todas as verificações em paralelo
@@ -116,6 +129,7 @@ async def detailed_health_check() -> JSONResponse:
 
 
 @router.get("/readiness", status_code=status.HTTP_200_OK, tags=["Health"])
+@inject
 async def readiness_check() -> JSONResponse:
     """
     Verifica se a aplicação está pronta para receber tráfego (Readiness Probe).

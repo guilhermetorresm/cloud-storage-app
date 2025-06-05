@@ -5,14 +5,17 @@ from typing import AsyncGenerator
 
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException
 
 from cloud_storage_app.config import get_settings
-from cloud_storage_app.infrastructure.database.connection import init_database, close_database
+from cloud_storage_app.infrastructure.di.container import (
+    get_container,
+    configure_container_wiring,
+    container_lifespan,
+    health_check
+)
 from cloud_storage_app.presentation.api.v1 import health
-from cloud_storage_app.presentation.api.v1 import auth
 from cloud_storage_app.presentation.middleware.error_handler import (
     http_exception_handler,
     validation_exception_handler,
@@ -35,67 +38,51 @@ settings = get_settings()
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     Context manager para gerenciar o ciclo de vida da aplicação.
-    Executa código no startup e shutdown.
+    Usa o container_lifespan para gerenciamento automático de recursos.
     """
-    # Startup
     logger.info("Starting Cloud Storage API...")
     logger.info(f"Environment: {settings.app.environment}")
     logger.info(f"Debug mode: {settings.app.debug}")
     
     try:
-        # Inicializar banco de dados
-        await init_database()
-        logger.info("Database connection initialized")
-        
-        # Fazer verificação real da conexão
-        from cloud_storage_app.infrastructure.database.connection import db_manager
-        
-        logger.info("Testing database connection...")
-        is_healthy = await db_manager.health_check()
-        
-        if is_healthy:
-            logger.info("✅ Database connection test successful")
-        else:
-            logger.error("❌ Database connection test failed")
-            raise RuntimeError("Database connection test failed during startup")
-        
-        # Outras inicializações podem ser adicionadas aqui
-        # Ex: inicializar cache Redis, conectar com S3, etc.
-        
-        logger.info("Application startup completed successfully")
+        # Usar o context manager do container para inicialização automática
+        async with container_lifespan() as container:
+            # Adicionar container à aplicação
+            app.container = container
+            
+            # Configurar wiring do container
+            configure_container_wiring(container)
+            
+            # Verificação final de saúde
+            is_healthy = await health_check()
+            if is_healthy:
+                logger.info("✅ Application startup completed successfully")
+            else:
+                logger.error("❌ Health check failed during startup")
+                raise RuntimeError("Application health check failed")
+            
+            # Aplicação está rodando
+            yield
+            
+        # O shutdown é automático através do context manager
+        logger.info("Application shutdown completed")
         
     except Exception as e:
         logger.error(f"Failed to start application: {e}")
         logger.error(f"Error type: {type(e).__name__}")
-        logger.error(f"Error details: {str(e)}")
         
-        # Log detalhado das configurações para debug
-        logger.error("Current database configuration:")
-        logger.error(f"  - POSTGRES_SERVER: {settings.database.postgres_server}")
-        logger.error(f"  - POSTGRES_PORT: {settings.database.postgres_port}")
-        logger.error(f"  - POSTGRES_DB: {settings.database.postgres_db}")
-        logger.error(f"  - POSTGRES_USER: {settings.database.postgres_user}")
-        logger.error(f"  - DATABASE_URL configured: {settings.database.database_url is not None}")
+        # Log apenas em debug para evitar vazar informações sensíveis
+        if settings.app.debug:
+            logger.error(f"Error details: {str(e)}")
+            logger.error("Current database configuration:")
+            logger.error(f"  - POSTGRES_SERVER: {settings.database.postgres_server}")
+            logger.error(f"  - POSTGRES_PORT: {settings.database.postgres_port}")
+            logger.error(f"  - POSTGRES_DB: {settings.database.postgres_db}")
+            logger.error(f"  - POSTGRES_USER: {settings.database.postgres_user}")
+        else:
+            logger.error("Database connection failed - check configuration in debug mode for details")
         
         raise
-    
-    # Aplicação está rodando
-    yield
-    
-    # Shutdown
-    logger.info("Shutting down Cloud Storage API...")
-    
-    try:
-        # Fechar conexões do banco
-        await close_database()
-        logger.info("Database connections closed")
-        
-        # Outras limpezas podem ser adicionadas aqui
-        
-        logger.info("Application shutdown completed")
-        
-    except Exception as e:
-        logger.error(f"Error during shutdown: {e}")
 
 
 # Criar aplicação FastAPI
@@ -111,7 +98,6 @@ app = FastAPI(
     openapi_url="/openapi.json" if settings.app.debug else None,
 )
 
-
 # Configurar CORS
 app.add_middleware(
     CORSMiddleware,
@@ -121,13 +107,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 # Registrar exception handlers
 app.add_exception_handler(HTTPException, http_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(CloudStorageException, general_exception_handler)
 app.add_exception_handler(Exception, general_exception_handler)
-
 
 # Middleware para logging de requests (apenas em debug)
 if settings.app.debug:
@@ -150,17 +134,11 @@ if settings.app.debug:
         
         return response
 
-
+# Incluir routers
 app.include_router(
     health.router,
     prefix="/health",
     tags=["Health Check"]
-)
-
-app.include_router(
-    auth.router,
-    prefix="/auth",
-    tags=["Authentication"]
 )
 
 
@@ -174,7 +152,6 @@ async def root():
         "status": "running",
         "docs": "/docs" if settings.app.debug else "disabled"
     }
-
 
 # Endpoint de informações da API
 @app.get("/info", status_code=status.HTTP_200_OK)
@@ -190,7 +167,6 @@ async def api_info():
 
 if __name__ == "__main__":
     import uvicorn
-    import time
     
     uvicorn.run(
         "main:app",
