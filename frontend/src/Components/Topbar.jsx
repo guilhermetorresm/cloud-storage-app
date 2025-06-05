@@ -24,7 +24,7 @@ export default function Topbar() {
   </div>
 
   {/* Barra de pesquisa */}
-  <div className="flex-1 mx-4 min-w-[200px]">
+  <div className="flex-1 mx-28 min-w-[200px]">
     <div className="relative w-full max-w-full sm:max-w-md">
       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
       <input
