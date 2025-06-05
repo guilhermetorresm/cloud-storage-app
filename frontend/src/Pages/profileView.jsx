@@ -1,13 +1,13 @@
 // src/Pages/editProfile.js
 import { useState } from "react";
-import { FaUser, FaEnvelope, FaLock, FaPen } from "react-icons/fa";
+import { FaUser, FaEnvelope, FaLock } from "react-icons/fa";
 import TopbarNoSearch from "../Components/TopbarNoSearch";
 import { Link, useNavigate } from "react-router-dom";
 
 export default function EditProfile() {
-  const [fullName, setFullName] = useState("");
-  const [username, setUsername] = useState("");
-  const [description, setDescription] = useState("");
+  const [fullName, getFullName] = useState("");
+  const [username, getUsername] = useState("");
+  const [description, getDescription] = useState("");
   const navigate = useNavigate();
 
   const handleEditarPerfil = () => {
