@@ -13,9 +13,8 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from dependency_injector.wiring import inject, Provide
 
-from ....infrastructure.database.connection import get_database_session, db_manager
 from ....config import get_settings, AppSettings
-from ....infrastructure.di.conteiner import Container
+from ....infrastructure.di.container import Container
 
 
 logger = logging.getLogger(__name__)
