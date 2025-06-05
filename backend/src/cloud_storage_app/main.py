@@ -11,6 +11,7 @@ from starlette.exceptions import HTTPException
 
 from cloud_storage_app.config import get_settings
 from cloud_storage_app.infrastructure.database.connection import init_database, close_database
+from cloud_storage_app.infrastructure.di.conteiner import Container
 from cloud_storage_app.presentation.api.v1 import health
 from cloud_storage_app.presentation.api.v1 import auth
 from cloud_storage_app.presentation.middleware.error_handler import (
@@ -30,6 +31,8 @@ logger = logging.getLogger(__name__)
 # Carregar configurações
 settings = get_settings()
 
+# Criar container de injeção de dependência
+container = Container()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
@@ -43,6 +46,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info(f"Debug mode: {settings.app.debug}")
     
     try:
+        # Inicializar recursos do container
+        container.init_resources()
+        logger.info("Container resources initialized")
+        
         # Inicializar banco de dados
         await init_database()
         logger.info("Database connection initialized")
@@ -59,8 +66,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             logger.error("❌ Database connection test failed")
             raise RuntimeError("Database connection test failed during startup")
         
-        # Outras inicializações podem ser adicionadas aqui
-        # Ex: inicializar cache Redis, conectar com S3, etc.
+        # Configurar wiring do container
+        container.wire(modules=[
+            "cloud_storage_app.presentation.api.v1.auth",
+            "cloud_storage_app.presentation.api.v1.health"
+        ])
+        logger.info("Container wiring configured")
         
         logger.info("Application startup completed successfully")
         
@@ -86,6 +97,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Shutting down Cloud Storage API...")
     
     try:
+        # Limpar recursos do container
+        container.shutdown_resources()
+        logger.info("Container resources cleaned up")
+        
         # Fechar conexões do banco
         await close_database()
         logger.info("Database connections closed")
@@ -111,6 +126,8 @@ app = FastAPI(
     openapi_url="/openapi.json" if settings.app.debug else None,
 )
 
+# Adicionar container à aplicação
+app.container = container
 
 # Configurar CORS
 app.add_middleware(

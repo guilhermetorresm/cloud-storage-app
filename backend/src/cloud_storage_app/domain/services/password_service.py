@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from domain.value_objects import Password, HashedPassword
+from cloud_storage_app.domain.value_objects import Password, HashedPassword
 
 
 class IPasswordService(ABC):

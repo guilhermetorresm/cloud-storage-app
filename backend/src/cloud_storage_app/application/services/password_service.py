@@ -1,5 +1,5 @@
-from domain.services.password_service import IPasswordService
-from domain.value_objects import Password, HashedPassword
+from cloud_storage_app.domain.services.password_service import IPasswordService
+from cloud_storage_app.domain.value_objects import Password, HashedPassword
 from typing import Tuple
 
 
