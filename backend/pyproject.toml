@@ -5,6 +5,7 @@ description = "Serviço de Backend com FastAPI para uma aplicação de armazenam
 authors = [{ name = "Guilherme Torres Melo", email = "guilhermetorresm@ufpi.edu.br" }]
 requires-python = ">=3.11"
 dependencies = [
+    "dependency-injector>=4.41.0",
     "fastapi>=0.110.0",
     "uvicorn[standard]>=0.25.0",
     "pydantic>=2.8.0",
