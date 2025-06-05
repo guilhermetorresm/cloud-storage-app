@@ -200,7 +200,6 @@ def configure_container_wiring(container: Container) -> None:
     """
     try:
         container.wire(modules=[
-            "cloud_storage_app.presentation.api.v1.auth",
             "cloud_storage_app.presentation.api.v1.health",
             # Adicione outros módulos aqui conforme necessário
         ])

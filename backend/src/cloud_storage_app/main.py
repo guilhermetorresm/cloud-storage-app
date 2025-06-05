@@ -16,7 +16,6 @@ from cloud_storage_app.infrastructure.di.container import (
     health_check
 )
 from cloud_storage_app.presentation.api.v1 import health
-from cloud_storage_app.presentation.api.v1 import auth
 from cloud_storage_app.presentation.middleware.error_handler import (
     http_exception_handler,
     validation_exception_handler,
@@ -142,11 +141,6 @@ app.include_router(
     tags=["Health Check"]
 )
 
-app.include_router(
-    auth.router,
-    prefix="/auth",
-    tags=["Authentication"]
-)
 
 # Endpoint raiz
 @app.get("/", status_code=status.HTTP_200_OK)
