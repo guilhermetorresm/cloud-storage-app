@@ -4,14 +4,12 @@ import { useState } from "react";
 import { InputField } from "../Components/ui/input-field";
 import { Button } from "../Components/ui/button";
 import { useNavigate } from "react-router-dom";
-import logo from '../Assets/logo_cortada.png';
-
+import logo from "../Assets/logo_cortada.png";
 
 export default function LoginScreen() {
   const [usuario, setUsuario] = useState("");
   const [senha, setSenha] = useState("");
   const navigate = useNavigate();
-
 
   const handleLogin = () => {
     console.log("Login:", { usuario, senha });
@@ -24,11 +22,10 @@ export default function LoginScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl shadow-lg p-8 w-full max-w-md">
-
-        <div className="flex justify-center space-x-3 mb-5">
-                <img src={logo} alt="Logo" className="h-10 w-25" />
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 sm:px-6 lg:px-8">
+      <div className="bg-white rounded-3xl shadow-lg p-6 sm:p-8 w-full max-w-md">
+        <div className="flex justify-center mb-5">
+          <img src={logo} alt="Logo" className="h-10 w-auto max-w-full" />
         </div>
 
         <div className="space-y-4">
@@ -50,17 +47,17 @@ export default function LoginScreen() {
 
           <div className="text-right">
             <button className="text-sm text-gray-500 hover:text-gray-700">
-              esqueceu a senha?
+              Esqueceu a senha?
             </button>
           </div>
 
-          <Button onClick={handleLogin} type="submit">
+          <Button onClick={handleLogin} type="submit" className="w-full">
             Entrar
           </Button>
 
           <div className="text-center text-gray-500 text-sm">OU</div>
 
-          <Button onClick={handleRegister} variant="secondary">
+          <Button onClick={handleRegister} variant="secondary" className="w-full">
             Cadastrar-se
           </Button>
         </div>

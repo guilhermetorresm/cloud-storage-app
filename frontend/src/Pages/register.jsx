@@ -7,7 +7,7 @@ import TopbarDefault from "../Components/TopbarDefault";
 
 export default function Register() {
   const [nome, setNome] = useState("");
-  const [sobrenome, setSobrenome] = useState(""); // Novo campo
+  const [sobrenome, setSobrenome] = useState("");
   const [usuario, setUsuario] = useState("");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -17,7 +17,7 @@ export default function Register() {
   const [erroEmail, setErroEmail] = useState("");
   const navigate = useNavigate();
 
-  // Validações
+  // Regras de validação da senha
   const hasMinLength = senha.length >= 8;
   const hasMaxLength = senha.length <= 128;
   const hasUpperLower = /[A-Z]/.test(senha) && /[a-z]/.test(senha);
@@ -68,9 +68,10 @@ export default function Register() {
     <div className="flex flex-col min-h-screen">
       <TopbarDefault />
 
-      <main className="flex-1 bg-gray-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl shadow-lg p-8 w-full max-w-md">
+      <main className="flex-1 bg-gray-100 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-6">
+        <div className="bg-white rounded-3xl shadow-lg w-full max-w-md p-6 sm:p-8">
           <h1 className="text-xl font-bold text-center mb-5">Cadastre-se</h1>
+
           <div className="space-y-4">
             <InputField
               type="text"
@@ -80,7 +81,6 @@ export default function Register() {
               onChange={(e) => setNome(e.target.value)}
             />
 
-            {/* Novo campo Sobrenome */}
             <InputField
               type="text"
               placeholder="Sobrenome"
@@ -155,10 +155,9 @@ export default function Register() {
             )}
 
             {erroSenha && <p className="text-red-500 text-sm text-center">{erroSenha}</p>}
-
             {erro && <p className="text-red-500 text-sm text-center">{erro}</p>}
 
-            <Button onClick={handleCadastro} type="submit">
+            <Button onClick={handleCadastro} type="submit" className="w-full">
               Finalizar Cadastro
             </Button>
           </div>
