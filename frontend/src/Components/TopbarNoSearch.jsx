@@ -35,7 +35,7 @@ export default function TopbarNoSearch() {
       </div>
 
       {/* Ícone de perfil */}
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-4 self-center">
         <button className="rounded-full bg-gray-200 p-2 hover:bg-gray-300">
           <FaUser/>
           <span role="img" aria-label="profile"></span>
