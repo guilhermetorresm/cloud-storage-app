@@ -6,6 +6,7 @@ Utiliza Pydantic Settings para validação e carregamento de variáveis de ambie
 import logging
 from functools import lru_cache
 from typing import Optional, List, Any
+from datetime import timedelta
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
@@ -116,12 +117,10 @@ class AuthSettings(BaseSettings):
     
     def get_access_token_expire_timedelta(self) -> timedelta:
         """Retorna timedelta para expiração do access token"""
-        from datetime import timedelta
         return timedelta(minutes=self.access_token_expire_minutes)
     
     def get_refresh_token_expire_timedelta(self) -> timedelta:
         """Retorna timedelta para expiração do refresh token"""
-        from datetime import timedelta
         return timedelta(days=self.refresh_token_expire_days)
     
     model_config = {
@@ -140,7 +139,7 @@ class StorageSettings(BaseSettings):
     s3_bucket_name: str = Field(env="S3_BUCKET_NAME")
     s3_endpoint_url: Optional[str] = Field(default=None, env="S3_ENDPOINT_URL")  # Para MinIO local
     
-    model_config = model_config = {
+    model_config = {
         "env_file": ".env",
         "case_sensitive": False,
         "extra": "ignore"
@@ -208,7 +207,7 @@ class AppSettings(BaseSettings):
         """Retorna os tipos de arquivo permitidos como lista"""
         return self.allowed_file_types
     
-    model_config = model_config = model_config = {
+    model_config = {
         "env_file": ".env",
         "case_sensitive": False,
         "extra": "ignore"
@@ -223,7 +222,7 @@ class Settings(BaseSettings):
     storage: StorageSettings = Field(default_factory=StorageSettings)
     app: AppSettings = Field(default_factory=AppSettings)
     
-    model_config = model_config = model_config = {
+    model_config = {
         "env_file": ".env",
         "case_sensitive": False,
         "extra": "ignore"

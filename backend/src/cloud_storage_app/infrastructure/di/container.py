@@ -7,6 +7,7 @@ from dependency_injector.wiring import Provide, inject
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cloud_storage_app.infrastructure.auth.password_service import PasswordService
+from cloud_storage_app.infrastructure.auth.jwt_service import JWTService
 from cloud_storage_app.application.services.password_service import PasswordApplicationService
 from cloud_storage_app.infrastructure.database.connection import DatabaseManager
 from cloud_storage_app.infrastructure.database.repositories.user_repository import UserRepository
@@ -39,6 +40,7 @@ class Container(containers.DeclarativeContainer):
     
     # Serviços de infraestrutura
     password_service = providers.Singleton(PasswordService)
+    jwt_service = providers.Singleton(JWTService)
     
     # ==========================================
     # REPOSITÓRIOS (Factory)
@@ -170,6 +172,7 @@ async def container_lifespan() -> AsyncGenerator[Container, None]:
 # Funções simples para injeção direta - use estas nos seus endpoints
 get_user_repository = Provide[Container.user_repository]
 get_password_service = Provide[Container.password_service]
+get_jwt_service = Provide[Container.jwt_service]
 get_password_application_service = Provide[Container.password_application_service]
 get_database_manager = Provide[Container.database_manager]
 get_settings_from_container = Provide[Container.settings]
