@@ -2,7 +2,6 @@ import logging
 from typing import Dict, Any
 
 from fastapi import APIRouter, HTTPException, status, Depends
-from dependency_injector.wiring import Provide, inject
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cloud_storage_app.application.use_cases.user.create_user_use_case import CreateUserUseCase
@@ -13,11 +12,18 @@ from cloud_storage_app.domain.exceptions.user_exceptions import (
     UserValidationException,
     InvalidPasswordException
 )
-from cloud_storage_app.infrastructure.di.container import Container, get_database_session
+from cloud_storage_app.infrastructure.di.container import get_database_session, get_container
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+
+# Função helper para obter o caso de uso
+def get_create_user_use_case() -> CreateUserUseCase:
+    """Factory para obter o caso de uso do container"""
+    container = get_container()
+    return container.create_user_use_case()
 
 
 @router.post(
@@ -58,11 +64,10 @@ router = APIRouter(prefix="/users", tags=["users"])
         }
     }
 )
-@inject
 async def create_user(
     user_data: UserCreateSchema,
-    db: AsyncSession = Depends(get_database_session),
-    create_user_use_case: CreateUserUseCase = Depends(lambda: Container().create_user_use_case(db_session=db))
+    create_user_use_case: CreateUserUseCase = Depends(get_create_user_use_case),
+    db: AsyncSession = Depends(get_database_session)
 ) -> UserResponseSchema:
     """
     Criar um novo usuário no sistema.
@@ -92,8 +97,12 @@ async def create_user(
             first_name=user_data.first_name,
             last_name=user_data.last_name
         )
-        # Executar caso de uso
-        user_response_dto = await create_user_use_case.execute(create_user_dto)
+        
+        # Executar caso de uso passando a sessão
+        user_response_dto = await create_user_use_case.execute(
+            create_user_dto=create_user_dto,
+            db_session=db
+        )
         
         # Converter DTO de resposta para schema de response
         user_response = UserResponseSchema(

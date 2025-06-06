@@ -10,7 +10,6 @@ from starlette.exceptions import HTTPException
 
 from cloud_storage_app.config import get_settings
 from cloud_storage_app.infrastructure.di.container import (
-    get_container,
     configure_container_wiring,
     container_lifespan,
     health_check
