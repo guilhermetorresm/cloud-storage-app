@@ -1,42 +1,38 @@
-from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
+from pydantic import BaseModel, EmailStr, Field
 
 
-@dataclass
-class CreateUserDTO:
+class CreateUserDTO(BaseModel):
     """DTO para criação de usuários."""
-    first_name: str
-    last_name: Optional[str] = None
-    username: str
-    email: str
-    password: str
+    first_name: str = Field(..., min_length=1, max_length=50)
+    last_name: Optional[str] = Field(None, max_length=50)
+    username: str = Field(..., min_length=3, max_length=30)
+    email: EmailStr
+    password: str = Field(..., min_length=8)
 
 
-@dataclass
-class UpdateUserDTO:
+class UpdateUserDTO(BaseModel):
     """DTO para atualização de usuários."""
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    username: Optional[str] = None
-    email: Optional[str] = None
+    first_name: Optional[str] = Field(None, min_length=1, max_length=50)
+    last_name: Optional[str] = Field(None, max_length=50)
+    username: Optional[str] = Field(None, min_length=3, max_length=30)
+    email: Optional[EmailStr] = None
 
 
-@dataclass
-class ChangePasswordDTO:
+class ChangePasswordDTO(BaseModel):
     """DTO para mudança de senha."""
-    current_password: str
-    new_password: str
+    current_password: str = Field(..., min_length=8)
+    new_password: str = Field(..., min_length=8)
 
 
-@dataclass
-class UserResponseDTO:
+class UserResponseDTO(BaseModel):
     """DTO para resposta de usuários."""
     user_id: str
     username: str
     first_name: str
     last_name: Optional[str] = None
-    email: str
+    email: EmailStr
     profile_picture: Optional[str] = None
     description: Optional[str] = None
     created_at: datetime
@@ -44,55 +40,33 @@ class UserResponseDTO:
     last_login_at: Optional[datetime] = None
     is_active: bool
 
-    @classmethod
-    def from_entity(cls, user) -> 'UserResponseDTO':
-        """Converte uma entidade User em um DTO de resposta."""
-        return cls(
-            user_id=str(user.user_id),
-            username=str(user.username),
-            first_name=str(user.first_name),
-            last_name=str(user.last_name) if user.last_name else None,
-            email=str(user.email),
-            profile_picture=str(user.profile_picture) if user.profile_picture else None,
-            description=str(user.description) if user.description else None,
-            created_at=user.created_at,
-            updated_at=user.updated_at,
-            last_login_at=user.last_login_at,
-            is_active=user.is_active
-        )
-    
+    class Config:
+        from_attributes = True
 
-@dataclass
-class UserResponseSimpleDTO:
+
+class UserResponseSimpleDTO(BaseModel):
     """DTO para resposta de usuários simples."""
     user_id: str
     username: str
     first_name: str
     last_name: Optional[str] = None
-    email: str
+    email: EmailStr
 
-    @classmethod
-    def from_entity(cls, user) -> 'UserResponseSimpleDTO':
-        """Converte uma entidade User em um DTO de resposta simples."""
-        return cls(
-            user_id=str(user.user_id),
-            username=str(user.username),
-            first_name=str(user.first_name),
-            last_name=str(user.last_name) if user.last_name else None,
-            email=str(user.email)
-        )
-    
+    class Config:
+        from_attributes = True
 
-@dataclass
-class UserLoginDTO:
+
+class UserLoginDTO(BaseModel):
     """DTO para login de usuários."""
-    username: str
-    password: str
+    username: str = Field(..., min_length=3, max_length=50)
+    password: str = Field(..., min_length=8)
 
 
-@dataclass
-class UserLoginResponseDTO:
+class UserLoginResponseDTO(BaseModel):
     """DTO para resposta de login de usuários."""
     user: UserResponseSimpleDTO
     access_token: str
     refresh_token: str
+
+    class Config:
+        from_attributes = True
