@@ -1,12 +1,11 @@
 import logging
 from typing import Tuple
 
-from dependency_injector.wiring import Provide, inject
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cloud_storage_app.domain.entities.user import User
 from cloud_storage_app.domain.value_objects import Email, Username, Password
-from cloud_storage_app.domain.repositories.user_repository import UserRepository
+from cloud_storage_app.infrastructure.database.repositories.user_repository import UserRepository
 from cloud_storage_app.application.dtos.user_dtos import CreateUserDTO, UserResponseDTO
 from cloud_storage_app.infrastructure.auth.password_service import PasswordService
 from cloud_storage_app.domain.exceptions.user_exceptions import (
@@ -21,16 +20,13 @@ logger = logging.getLogger(__name__)
 class CreateUserUseCase:
     """Use Case para criar um novo usuário"""
 
-    @inject
     def __init__(
         self,
-        user_repository: UserRepository = Provide["user_repository"],
-        password_service: PasswordService = Provide["password_service"],
-        db_session: AsyncSession = Provide["db_session"],
+        password_service: PasswordService,
     ):
-        self._user_repository = user_repository
         self._password_service = password_service
-        self._db_session = db_session
+        self._db_session = None  # Será definida no execute()
+        self._user_repository = None  # Será criada no execute()
 
     async def _validate_user_data(self, create_user_dto: CreateUserDTO) -> None:
         """Valida os dados do usuário antes da criação."""
@@ -48,7 +44,7 @@ class CreateUserUseCase:
                 identifier_type="email"
             )
 
-    async def execute(self, create_user_dto: CreateUserDTO) -> UserResponseDTO:
+    async def execute(self, create_user_dto: CreateUserDTO, db_session: AsyncSession) -> UserResponseDTO:
         """
         Este caso de uso é responsável por:
         1. Validar a unicidade do username e email
@@ -57,12 +53,13 @@ class CreateUserUseCase:
         4. Persistir o usuário no banco de dados
         
         Attributes:
-            _user_repository (UserRepository): Repositório para operações com usuários
             _password_service (PasswordService): Serviço para operações com senhas
             _db_session (AsyncSession): Sessão do banco de dados
+            _user_repository (UserRepository): Repositório para operações com usuários
         
         Args:
             create_user_dto: DTO com os dados do usuário a ser criado.
+            db_session: Sessão do banco de dados para esta operação.
             
         Returns:
             UserResponseDTO: DTO com os dados do usuário criado.
@@ -73,6 +70,10 @@ class CreateUserUseCase:
             InvalidPasswordException: Se a senha não atender aos requisitos.
         """
         logger.info(f"Iniciando criação de usuário para o email: {create_user_dto.email}")
+
+        # Criar repositório com a sessão
+        self._db_session = db_session
+        self._user_repository = UserRepository(session=db_session)
 
         try:
             # 1. Validação dos dados
@@ -100,8 +101,23 @@ class CreateUserUseCase:
             await self._user_repository.save(new_user)
             await self._db_session.commit()
             
-            logger.info(f"Usuário criado com sucesso: {new_user}")
-            return UserResponseDTO.model_validate(new_user)
+            logger.info(f"Usuário criado com sucesso: {new_user.email}")
+            logger.debug(f"Usuário criado com sucesso: {new_user}")
+            
+            # Converter entidade para DTO extraindo os valores dos value objects
+            return UserResponseDTO(
+                user_id=str(new_user.user_id.value),
+                username=new_user.username.value,
+                first_name=new_user.first_name.value,
+                last_name=new_user.last_name.value if new_user.last_name else None,
+                email=new_user.email.value,
+                profile_picture=new_user.profile_picture.value if new_user.profile_picture else None,
+                description=new_user.description.value if new_user.description else None,
+                created_at=new_user.created_at,
+                updated_at=new_user.updated_at,
+                last_login_at=new_user.last_login_at,
+                is_active=new_user.is_active
+            )
 
         except (UserAlreadyExistsException, UserValidationException, InvalidPasswordException) as e:
             logger.error(f"Erro ao criar usuário: {str(e)}")

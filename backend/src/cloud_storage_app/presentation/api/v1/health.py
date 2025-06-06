@@ -18,7 +18,7 @@ from ....infrastructure.di.container import Container
 
 
 logger = logging.getLogger(__name__)
-router = APIRouter()
+router = APIRouter(prefix="/health")
 settings = get_settings()
 
 # --- Funções de Verificação Modulares ---

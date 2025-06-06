@@ -2,17 +2,25 @@
 API schemas
 """
 from .user_schema import (
-    UserCreate,
-    UserLogin, 
-    UserResponse,
+    UserCreateSchema,
+    UserUpdateSchema,
+    UserResponseSchema,
+    UserSimpleResponseSchema,
+    UserLoginSchema,
+    UserLoginResponseSchema,
+    ChangePasswordSchema,
     Token,
-    TokenData
+    TokenData,
 )
 
 __all__ = [
-    "UserCreate",
-    "UserLogin", 
-    "UserResponse",
+    "UserCreateSchema",
+    "UserUpdateSchema",
+    "UserResponseSchema",
+    "UserSimpleResponseSchema",
+    "UserLoginSchema",
+    "UserLoginResponseSchema",
+    "ChangePasswordSchema",
     "Token",
-    "TokenData"
+    "TokenData",
 ]

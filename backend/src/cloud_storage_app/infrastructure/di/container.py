@@ -11,6 +11,7 @@ from cloud_storage_app.infrastructure.auth.jwt_service import JWTService
 from cloud_storage_app.application.services.password_service import PasswordApplicationService
 from cloud_storage_app.infrastructure.database.connection import DatabaseManager
 from cloud_storage_app.infrastructure.database.repositories.user_repository import UserRepository
+from cloud_storage_app.application.use_cases.user.create_user_use_case import CreateUserUseCase
 from cloud_storage_app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -46,11 +47,9 @@ class Container(containers.DeclarativeContainer):
     # REPOSITÓRIOS (Factory)
     # ==========================================
     
-    # Factory para criar UserRepository - será injetada uma sessão quando necessário
-    user_repository = providers.Factory(
-        UserRepository,
-        # A sessão será fornecida externamente nos endpoints
-    )
+    # Repositórios são criados diretamente nos casos de uso com suas sessões
+    # Para manter compatibilidade, mantemos commented out
+    # user_repository = providers.Factory(UserRepository)  # Não usado no padrão atual
     
     # ==========================================
     # SERVIÇOS DE APLICAÇÃO (Factory)
@@ -60,6 +59,20 @@ class Container(containers.DeclarativeContainer):
     password_application_service = providers.Factory(
         PasswordApplicationService,
         password_service=password_service
+    )
+
+    # ==========================================
+    # CASOS DE USO (Factory - Camada de Aplicação)
+    # ==========================================
+    
+    # Casos de uso coordenam repositórios e serviços para implementar regras de negócio
+    # providers.Dependency() indica que a dependência será fornecida externamente (endpoint)
+    
+    # Casos de uso de usuário
+    create_user_use_case = providers.Factory(
+        CreateUserUseCase,
+        password_service=password_service
+        # user_repository removido - será criado internamente no execute()
     )
 
 
@@ -169,13 +182,18 @@ async def container_lifespan() -> AsyncGenerator[Container, None]:
 # DEPENDENCY INJECTION HELPERS
 # ==========================================
 
-# Funções simples para injeção direta - use estas nos seus endpoints
-get_user_repository = Provide[Container.user_repository]
+# Serviços de infraestrutura
 get_password_service = Provide[Container.password_service]
 get_jwt_service = Provide[Container.jwt_service]
 get_password_application_service = Provide[Container.password_application_service]
 get_database_manager = Provide[Container.database_manager]
 get_settings_from_container = Provide[Container.settings]
+
+# Repositórios (precisam de sessão externa)
+# get_user_repository = Provide[Container.user_repository]
+
+# Casos de uso (layer de aplicação)
+get_create_user_use_case = Provide[Container.create_user_use_case]
 
 # Função para obter sessão de banco (context manager)
 async def get_database_session():
@@ -204,6 +222,7 @@ def configure_container_wiring(container: Container) -> None:
     try:
         container.wire(modules=[
             "cloud_storage_app.presentation.api.v1.health",
+            # "cloud_storage_app.presentation.api.v1.users",  # Removido - usa apenas Depends()
             # Adicione outros módulos aqui conforme necessário
         ])
         logger.info("Container wiring configurado")
