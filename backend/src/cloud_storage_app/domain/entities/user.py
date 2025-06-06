@@ -76,14 +76,14 @@ class User:
         """
         # Cria a instância do usuário
         user = cls(
-            user_id=UserId.generate(),
-            username=Username(username),
-            email=Email(email),
-            hashed_password=HashedPassword(hashed_password),
-            first_name=FirstName(first_name),
-            last_name=LastName(last_name) if last_name else None,
-            profile_picture=ProfilePicture(profile_picture) if profile_picture else None,
-            description=UserDescription(description) if description else None
+            _user_id=UserId.generate(),
+            _username=Username(username),
+            _email=Email(email),
+            _hashed_password=HashedPassword(hashed_password),
+            _first_name=FirstName(first_name),
+            _last_name=LastName(last_name) if last_name else None,
+            _profile_picture=ProfilePicture(profile_picture) if profile_picture else None,
+            _description=UserDescription(description) if description else None
         )
         
         # Adiciona o evento de domínio

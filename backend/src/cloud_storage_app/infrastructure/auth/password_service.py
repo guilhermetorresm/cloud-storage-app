@@ -10,10 +10,15 @@ class PasswordService(IPasswordService):
     """Concrete implementation of password service using bcrypt."""
     
     def __init__(self):
+        # Configuração mais robusta do bcrypt para evitar warnings
         self._pwd_context = CryptContext(
             schemes=["bcrypt"],
             deprecated="auto",
-            bcrypt__rounds=12  # Higher rounds for better security
+            bcrypt__rounds=12,  # Higher rounds for better security
+            # Configurações para evitar warnings
+            bcrypt__default_ident="2b",
+            bcrypt__min_rounds=4,
+            bcrypt__max_rounds=31,
         )
     
     def hash_password(self, password: Password) -> HashedPassword:
@@ -30,10 +35,13 @@ class PasswordService(IPasswordService):
             ValueError: If password is invalid or hashing fails
         """
         try:
+            logger.debug(f"Hashing password for user")
             hashed = self._pwd_context.hash(password.value)
+            logger.debug(f"Password hashed successfully")
             return HashedPassword(value=hashed)
         except Exception as e:
             logger.error(f"Failed to hash password: {str(e)}")
+            logger.error(f"Password object: {type(password)}, has value: {hasattr(password, 'value')}")
             raise ValueError("Failed to hash password") from e
     
     def verify_password(self, password: Password, hashed_password: HashedPassword) -> bool:
