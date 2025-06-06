@@ -54,16 +54,80 @@ class DatabaseSettings(BaseSettings):
     }
 
 class AuthSettings(BaseSettings):
-    """Configurações de autenticação"""
+    """Configurações de autenticação e JWT"""
     
+    # JWT Core Settings
     secret_key: str = Field(env="SECRET_KEY")
     algorithm: str = Field(default="HS256", env="JWT_ALGORITHM")
+    
+    # Token Expiration Times
     access_token_expire_minutes: int = Field(default=30, env="ACCESS_TOKEN_EXPIRE_MINUTES")
     refresh_token_expire_days: int = Field(default=7, env="REFRESH_TOKEN_EXPIRE_DAYS")
     
-    model_config = model_config = {
+    # JWT Claims Configuration
+    issuer: str = Field(default="cloud-storage-api", env="JWT_ISSUER")
+    audience: str = Field(default="cloud-storage-users", env="JWT_AUDIENCE")
+    
+    # Security Settings
+    require_https: bool = Field(default=True, env="JWT_REQUIRE_HTTPS")
+    allow_refresh_token_reuse: bool = Field(default=False, env="JWT_ALLOW_REFRESH_REUSE")
+    
+    # Token Validation Settings
+    verify_signature: bool = Field(default=True, env="JWT_VERIFY_SIGNATURE")
+    verify_expiration: bool = Field(default=True, env="JWT_VERIFY_EXPIRATION")
+    leeway_seconds: int = Field(default=10, env="JWT_LEEWAY_SECONDS")  # Clock skew tolerance
+    
+    @field_validator('access_token_expire_minutes', mode='after')
+    @classmethod
+    def validate_access_token_expire(cls, v: int) -> int:
+        """Valida tempo de expiração do access token"""
+        if v < 5:
+            raise ValueError("Access token deve expirar em pelo menos 5 minutos")
+        if v > 1440:  # 24 horas
+            raise ValueError("Access token não deve expirar em mais de 24 horas")
+        return v
+    
+    @field_validator('refresh_token_expire_days', mode='after')
+    @classmethod
+    def validate_refresh_token_expire(cls, v: int) -> int:
+        """Valida tempo de expiração do refresh token"""
+        if v < 1:
+            raise ValueError("Refresh token deve expirar em pelo menos 1 dia")
+        if v > 30:
+            raise ValueError("Refresh token não deve expirar em mais de 30 dias")
+        return v
+    
+    @field_validator('secret_key', mode='after')
+    @classmethod
+    def validate_secret_key(cls, v: str) -> str:
+        """Valida a chave secreta"""
+        if len(v) < 32:
+            raise ValueError("Secret key deve ter pelo menos 32 caracteres")
+        return v
+    
+    @field_validator('algorithm', mode='after')
+    @classmethod
+    def validate_algorithm(cls, v: str) -> str:
+        """Valida o algoritmo JWT"""
+        allowed_algorithms = {'HS256', 'HS384', 'HS512', 'RS256', 'RS384', 'RS512'}
+        if v not in allowed_algorithms:
+            raise ValueError(f"Algoritmo deve ser um de: {', '.join(allowed_algorithms)}")
+        return v
+    
+    def get_access_token_expire_timedelta(self) -> timedelta:
+        """Retorna timedelta para expiração do access token"""
+        from datetime import timedelta
+        return timedelta(minutes=self.access_token_expire_minutes)
+    
+    def get_refresh_token_expire_timedelta(self) -> timedelta:
+        """Retorna timedelta para expiração do refresh token"""
+        from datetime import timedelta
+        return timedelta(days=self.refresh_token_expire_days)
+    
+    model_config = {
         "env_file": ".env",
         "case_sensitive": False,
+        "env_file_encoding": "utf-8",
         "extra": "ignore"
     }
 
@@ -183,84 +247,6 @@ def get_settings() -> Settings:
     logger.info(f"Database User: {settings.database.postgres_user}")
     
     return settings
-
-class AuthSettings(BaseSettings):
-    """Configurações de autenticação e JWT"""
-    
-    # JWT Core Settings
-    secret_key: str = Field(env="SECRET_KEY")
-    algorithm: str = Field(default="HS256", env="JWT_ALGORITHM")
-    
-    # Token Expiration Times
-    access_token_expire_minutes: int = Field(default=30, env="ACCESS_TOKEN_EXPIRE_MINUTES")
-    refresh_token_expire_days: int = Field(default=7, env="REFRESH_TOKEN_EXPIRE_DAYS")
-    
-    # JWT Claims Configuration
-    issuer: str = Field(default="cloud-storage-api", env="JWT_ISSUER")
-    audience: str = Field(default="cloud-storage-users", env="JWT_AUDIENCE")
-    
-    # Security Settings
-    require_https: bool = Field(default=True, env="JWT_REQUIRE_HTTPS")
-    allow_refresh_token_reuse: bool = Field(default=False, env="JWT_ALLOW_REFRESH_REUSE")
-    
-    # Token Validation Settings
-    verify_signature: bool = Field(default=True, env="JWT_VERIFY_SIGNATURE")
-    verify_expiration: bool = Field(default=True, env="JWT_VERIFY_EXPIRATION")
-    leeway_seconds: int = Field(default=10, env="JWT_LEEWAY_SECONDS")  # Clock skew tolerance
-    
-    @field_validator('access_token_expire_minutes', mode='after')
-    @classmethod
-    def validate_access_token_expire(cls, v: int) -> int:
-        """Valida tempo de expiração do access token"""
-        if v < 5:
-            raise ValueError("Access token deve expirar em pelo menos 5 minutos")
-        if v > 1440:  # 24 horas
-            raise ValueError("Access token não deve expirar em mais de 24 horas")
-        return v
-    
-    @field_validator('refresh_token_expire_days', mode='after')
-    @classmethod
-    def validate_refresh_token_expire(cls, v: int) -> int:
-        """Valida tempo de expiração do refresh token"""
-        if v < 1:
-            raise ValueError("Refresh token deve expirar em pelo menos 1 dia")
-        if v > 30:
-            raise ValueError("Refresh token não deve expirar em mais de 30 dias")
-        return v
-    
-    @field_validator('secret_key', mode='after')
-    @classmethod
-    def validate_secret_key(cls, v: str) -> str:
-        """Valida a chave secreta"""
-        if len(v) < 32:
-            raise ValueError("Secret key deve ter pelo menos 32 caracteres")
-        return v
-    
-    @field_validator('algorithm', mode='after')
-    @classmethod
-    def validate_algorithm(cls, v: str) -> str:
-        """Valida o algoritmo JWT"""
-        allowed_algorithms = {'HS256', 'HS384', 'HS512', 'RS256', 'RS384', 'RS512'}
-        if v not in allowed_algorithms:
-            raise ValueError(f"Algoritmo deve ser um de: {', '.join(allowed_algorithms)}")
-        return v
-    
-    def get_access_token_expire_timedelta(self) -> timedelta:
-        """Retorna timedelta para expiração do access token"""
-        from datetime import timedelta
-        return timedelta(minutes=self.access_token_expire_minutes)
-    
-    def get_refresh_token_expire_timedelta(self) -> timedelta:
-        """Retorna timedelta para expiração do refresh token"""
-        from datetime import timedelta
-        return timedelta(days=self.refresh_token_expire_days)
-    
-    model_config = {
-        "env_file": ".env",
-        "case_sensitive": False,
-        "env_file_encoding": "utf-8",
-        "extra": "ignore"
-    }
 
 # Instância global das configurações
 settings = get_settings()
