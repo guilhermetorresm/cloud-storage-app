@@ -19,13 +19,13 @@ export default function Topbar() {
     <img
       src={logo}
       alt="Logo"
-      className="h-5 sm:h-7 w-auto transition-all duration-300"
+      className="h-10 w-25 transition-all duration-300"
     />
   </div>
 
   {/* Barra de pesquisa */}
-  <div className="flex-1 mx-28 min-w-[200px]">
-    <div className="relative w-full max-w-full sm:max-w-md">
+  <div className="flex-1 mx-1 translate-x-16 min-w-[200px]">
+    <div className="relative w-80 max-w-screen-sm sm:min-w-md">
       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
       <input
         type="text"

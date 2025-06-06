@@ -26,14 +26,14 @@ export default function Sidebar() {
         </nav>
       </div>
 
-      {/* Botão "Sair" fixo na base da sidebar */}
-      <div className="pt-4 border-t mt-auto">
-      <button 
-        onClick={handleExit} 
-        className="mt-auto z-10 text-red-600 font-semibold flex items-center space-x-2 hover:underline w-full">
-        <LogOut/>
-        <span>Sair</span>
-      </button>
+      <div className="mt-auto">
+        <hr className="my-4 border-gray-300" />
+        <button 
+          onClick={handleExit} 
+          className="z-10 text-red-600 font-semibold flex items-center space-x-2 hover:underline w-full">
+          <LogOut/>
+          <span>Sair</span>
+        </button>
       </div>
     </aside>
   );
