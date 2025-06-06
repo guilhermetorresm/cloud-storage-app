@@ -1,7 +1,7 @@
 // src/components/Topbar.jsx
-import React from 'react';
+import React from "react";
 
-import logo from '../Assets/logo_cortada.png';
+import logo from "../Assets/logo_cortada.png";
 
 export default function TopbarDefault() {
   return (

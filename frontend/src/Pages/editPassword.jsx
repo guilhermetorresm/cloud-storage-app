@@ -20,9 +20,8 @@ export default function EditPassword() {
   const passwordsMatch = newPassword === confirmPassword && confirmPassword !== "";
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col h-screen">
       <TopbarNoSearch />
-
       <div className="flex-1 flex items-center justify-center bg-gray-50 p-4">
         <div className="bg-white rounded-lg shadow-md p-8 w-full max-w-md">
           <h1 className="text-2xl font-bold text-center mb-2">Alterar senha</h1>

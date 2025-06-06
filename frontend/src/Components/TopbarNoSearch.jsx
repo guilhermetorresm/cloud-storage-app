@@ -1,11 +1,10 @@
 // src/components/TopbarNoSearch.jsx
-import React from 'react';
-import logo from '../Assets/logo_cortada.png';
-import { FaUser } from 'react-icons/fa';
-import { useNavigate } from 'react-router-dom';
+import React from "react";
+import logo from "../Assets/logo_cortada.png";
+import { FaUser } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 
 export default function TopbarNoSearch() {
-
   const navigate = useNavigate();
 
   const handleGoDashboard = () => {
@@ -36,10 +35,10 @@ export default function TopbarNoSearch() {
 
       {/* Ícone de perfil */}
       <div className="flex items-center space-x-4 justify-center h-full">
-    <button className="rounded-full bg-gray-200 p-2 hover:bg-gray-300">
-      <FaUser />
-    </button>
-  </div>
-</header>
+        <div className="rounded-full bg-gray-200 p-2 hover:bg-gray-300">
+          <FaUser />
+        </div>
+      </div>
+    </header>
   );
 }
