@@ -10,6 +10,7 @@ from cloud_storage_app.infrastructure.auth.password_service import PasswordServi
 from cloud_storage_app.application.services.password_service import PasswordApplicationService
 from cloud_storage_app.infrastructure.database.connection import DatabaseManager
 from cloud_storage_app.infrastructure.database.repositories.user_repository import UserRepository
+from cloud_storage_app.application.use_cases.user.create_user_use_case import CreateUserUseCase
 from cloud_storage_app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -47,7 +48,7 @@ class Container(containers.DeclarativeContainer):
     # Factory para criar UserRepository - será injetada uma sessão quando necessário
     user_repository = providers.Factory(
         UserRepository,
-        # A sessão será fornecida externamente nos endpoints
+        session=providers.Dependency()
     )
     
     # ==========================================
@@ -58,6 +59,18 @@ class Container(containers.DeclarativeContainer):
     password_application_service = providers.Factory(
         PasswordApplicationService,
         password_service=password_service
+    )
+
+    # ==========================================
+    # CASOS DE USO (Factory)
+    # ==========================================
+
+    # Casos de uso de usuário
+    create_user_use_case = providers.Factory(
+        CreateUserUseCase,
+        user_repository=user_repository,
+        password_service=password_service,
+        db_session=providers.Dependency()
     )
 
 
@@ -201,6 +214,7 @@ def configure_container_wiring(container: Container) -> None:
     try:
         container.wire(modules=[
             "cloud_storage_app.presentation.api.v1.health",
+            "cloud_storage_app.presentation.api.v1.users",
             # Adicione outros módulos aqui conforme necessário
         ])
         logger.info("Container wiring configurado")
