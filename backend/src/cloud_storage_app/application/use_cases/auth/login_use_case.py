@@ -7,11 +7,14 @@ import logging
 from typing import Optional
 from dataclasses import dataclass
 
+from dependency_injector.wiring import Provide, inject
+
 from cloud_storage_app.domain.entities.user import User
-from cloud_storage_app.domain.repositories.user_repository import IUserRepository
-from cloud_storage_app.domain.services.password_service import IPasswordService
+from cloud_storage_app.domain.repositories.user_repository import UserRepository
+from cloud_storage_app.infrastructure.auth.password_service import PasswordService
 from cloud_storage_app.domain.value_objects import Username, Password
 from cloud_storage_app.infrastructure.auth.jwt_service import JWTService, JWTTokens
+from cloud_storage_app.application.dtos.user_dtos import UserLoginDTO, UserLoginResponseDTO, UserResponseSimpleDTO
 from cloud_storage_app.application.exceptions import (
     AuthenticationException,
     InvalidCredentialsException,
@@ -19,24 +22,6 @@ from cloud_storage_app.application.exceptions import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class LoginRequest:
-    """Request para o caso de uso de login"""
-    username: str
-    password: str
-
-
-@dataclass
-class LoginResponse:
-    """Response do caso de uso de login"""
-    access_token: str
-    refresh_token: str
-    token_type: str
-    user_id: str
-    username: str
-    email: str
 
 
 class LoginUseCase:
@@ -50,26 +35,27 @@ class LoginUseCase:
     - Gerar tokens JWT em caso de sucesso
     """
     
+    @inject
     def __init__(
         self,
-        user_repository: IUserRepository,
-        password_service: IPasswordService,
-        jwt_service: JWTService
+        user_repository: UserRepository = Provide["user_repository"],
+        password_service: PasswordService = Provide["password_service"],
+        jwt_service: JWTService = Provide["jwt_service"],
     ):
         self._user_repository = user_repository
         self._password_service = password_service
         self._jwt_service = jwt_service
         logger.debug("LoginUseCase inicializado")
     
-    async def execute(self, request: LoginRequest) -> LoginResponse:
+    async def execute(self, request: UserLoginDTO) -> UserLoginResponseDTO:
         """
         Executa o caso de uso de login.
         
         Args:
-            request: Dados de login (username e password)
+            request: UserLoginDTO, Dados de login (username e password)
             
         Returns:
-            LoginResponse: Dados de resposta incluindo tokens JWT
+            UserLoginResponseDTO: Dados de resposta incluindo tokens JWT
             
         Raises:
             InvalidCredentialsException: Se as credenciais estiverem incorretas
@@ -96,15 +82,21 @@ class LoginUseCase:
             
             # 6. Registrar login bem-sucedido
             await self._log_successful_login(user)
+
+            user_response = UserResponseSimpleDTO(
+                user_id=str(user.user_id.value),
+                username=user.username.value,
+                email=user.email.value,
+                first_name=user.first_name.value,
+                last_name=user.last_name.value,
+            )
             
             # 7. Preparar resposta
-            response = LoginResponse(
+            response = UserLoginResponseDTO(
                 access_token=tokens.access_token,
                 refresh_token=tokens.refresh_token,
                 token_type=tokens.token_type,
-                user_id=str(user.id),
-                username=user.username.value,
-                email=user.email.value
+                user=user_response
             )
             
             logger.info(f"Login realizado com sucesso para usuário: {user.username.value}")
@@ -117,7 +109,7 @@ class LoginUseCase:
             logger.error(f"Erro inesperado durante login: {str(e)}")
             raise AuthenticationException("Erro interno durante autenticação") from e
     
-    async def _validate_request(self, request: LoginRequest) -> None:
+    async def _validate_request(self, request: UserLoginDTO) -> None:
         """
         Valida os dados de entrada do request.
         
@@ -137,13 +129,13 @@ class LoginUseCase:
         try:
             Username(value=request.username.strip())
         except ValueError as e:
-            raise InvalidCredentialsException("Username inválido") from e
+            raise InvalidCredentialsException("Username ou Senha inválidos") from e
         
         # Validar formato da senha usando value object
         try:
             Password(value=request.password)
         except ValueError as e:
-            raise InvalidCredentialsException("Formato de senha inválido") from e
+            raise InvalidCredentialsException("Username ou Senha inválidos") from e
     
     async def _find_user_by_username(self, username_str: str) -> User:
         """
@@ -212,7 +204,7 @@ class LoginUseCase:
             
             if not is_valid:
                 logger.warning(f"Tentativa de login com senha incorreta para usuário: {user.username.value}")
-                raise InvalidCredentialsException("Credenciais inválidas")
+                raise InvalidCredentialsException("Username ou Senha inválidos")
             
             logger.debug(f"Senha validada com sucesso para usuário: {user.username.value}")
             
