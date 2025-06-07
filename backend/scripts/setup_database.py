@@ -64,40 +64,48 @@ class DatabaseManager:
             logger.error(f"❌ Erro ao executar {description}: {e}")
             return False
     
-    async def test_connection(self) -> bool:
-        """Testa a conexão com o banco de dados"""
+    async def test_connection(self, max_retries: int = 5, retry_delay: int = 2) -> bool:
+        """Testa a conexão com o banco de dados com retry"""
         logger.info("🔍 Testando conexão com o banco de dados...")
         
-        try:
-            # Exibir configurações (sem senha)
-            db_url = self.settings.database.get_database_url()
-            safe_db_url = db_url.replace(f":{self.settings.database.postgres_password}@", ":***@")
-            
-            logger.info("📋 Configurações do banco:")
-            logger.info(f"  • URL: {safe_db_url}")
-            logger.info(f"  • Servidor: {self.settings.database.postgres_server}")
-            logger.info(f"  • Porta: {self.settings.database.postgres_port}")
-            logger.info(f"  • Banco: {self.settings.database.postgres_db}")
-            logger.info(f"  • Usuário: {self.settings.database.postgres_user}")
-            
-            await db_manager.initialize()
-            is_healthy = await db_manager.health_check()
-            
-            if is_healthy:
-                logger.info("✅ Conexão com o banco de dados funcionando!")
-                return True
-            else:
-                logger.error("❌ Falha na verificação de saúde do banco")
-                return False
-                
-        except Exception as e:
-            logger.error(f"❌ Erro ao testar conexão: {e}")
-            return False
-        finally:
+        for attempt in range(max_retries):
             try:
-                await db_manager.close()
-            except:
-                pass
+                # Exibir configurações (sem senha)
+                db_url = self.settings.database.get_database_url()
+                safe_db_url = db_url.replace(f":{self.settings.database.postgres_password}@", ":***@")
+                
+                logger.info(f"📋 Tentativa {attempt + 1}/{max_retries}")
+                logger.info(f"  • URL: {safe_db_url}")
+                logger.info(f"  • Servidor: {self.settings.database.postgres_server}")
+                logger.info(f"  • Porta: {self.settings.database.postgres_port}")
+                logger.info(f"  • Banco: {self.settings.database.postgres_db}")
+                logger.info(f"  • Usuário: {self.settings.database.postgres_user}")
+                
+                await db_manager.initialize()
+                is_healthy = await db_manager.health_check()
+                
+                if is_healthy:
+                    logger.info("✅ Conexão com o banco de dados funcionando!")
+                    return True
+                else:
+                    logger.warning(f"⚠️ Falha na verificação de saúde do banco (tentativa {attempt + 1}/{max_retries})")
+                    if attempt < max_retries - 1:
+                        logger.info(f"🔄 Aguardando {retry_delay} segundos antes da próxima tentativa...")
+                        await asyncio.sleep(retry_delay)
+                    
+            except Exception as e:
+                logger.warning(f"⚠️ Erro ao testar conexão (tentativa {attempt + 1}/{max_retries}): {e}")
+                if attempt < max_retries - 1:
+                    logger.info(f"🔄 Aguardando {retry_delay} segundos antes da próxima tentativa...")
+                    await asyncio.sleep(retry_delay)
+            finally:
+                try:
+                    await db_manager.close()
+                except:
+                    pass
+        
+        logger.error("❌ Todas as tentativas de conexão falharam")
+        return False
     
     def check_alembic_setup(self) -> bool:
         """Verifica se o Alembic está configurado"""

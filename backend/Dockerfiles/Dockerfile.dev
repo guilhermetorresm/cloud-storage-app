@@ -4,9 +4,6 @@ WORKDIR /app
 ENV UV_PROJECT_ENVIRONMENT="/usr/local/"
 ENV UV_COMPILE_BYTECODE=1
 
-# Instalar netcat para verificação do banco de dados
-RUN apt-get update && apt-get install -y netcat-traditional && rm -rf /var/lib/apt/lists/*
-
 COPY pyproject.toml .
 COPY uv.lock .
 
@@ -17,16 +14,17 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
 
-COPY src/ ./
+# Copiar arquivos da aplicação
+COPY src/ ./src/
 COPY alembic.ini .
 COPY alembic ./alembic
 COPY scripts ./scripts
-COPY Dockerfiles/entrypoint.sh .
 
-# Tornar o script de entrypoint executável
-RUN chmod +x entrypoint.sh
+# Copiar e configurar o script de entrypoint
+COPY Dockerfiles/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 EXPOSE 8080
 
 # Usar o script de entrypoint
-CMD ["./entrypoint.sh"]
+CMD ["/app/entrypoint.sh"]
