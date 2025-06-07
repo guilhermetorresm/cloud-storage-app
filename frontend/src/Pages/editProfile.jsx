@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FaUser, FaEnvelope, FaLock, FaPen } from "react-icons/fa";
+import { FaAddressCard, FaIdBadge, FaUser, FaEnvelope, FaLock, FaPen } from "react-icons/fa";
 import TopbarNoSearch from "../Components/TopbarNoSearch";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -8,7 +8,11 @@ export default function EditProfile() {
   const [lastName, setLastName] = useState("");
   const [username, setUsername] = useState("");
   const [description, setDescription] = useState("");
+  const [profileImage, setProfileImage] = useState(null);
   const navigate = useNavigate();
+
+  const isFormValid =
+    firstName.trim() !== "" && lastName.trim() !== "" && username.trim() !== "";
 
   const handleDB = () => {
     navigate("/dashboard");
@@ -16,6 +20,17 @@ export default function EditProfile() {
 
   const handleVerPerfil = () => {
     navigate("/profileView");
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfileImage(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   return (
@@ -32,12 +47,34 @@ export default function EditProfile() {
           <div className="flex flex-col md:flex-row gap-20">
             {/* Lado Esquerdo */}
             <div className="flex flex-col items-center md:w-1/3">
-              <div className="w-40 h-40 rounded-full bg-gray-300 relative">
-                <button className="absolute bottom-2 right-2 transform translate-x-1/2 bg-white px-4 py-1 rounded-full border flex items-center gap-2 shadow hover:bg-gray-100">
+              <div className="w-40 h-40 rounded-full bg-gray-300 relative flex items-center justify-center">
+                {profileImage ? (
+                  <img
+                    src={profileImage}
+                    alt="Foto de perfil"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <FaUser className="text-gray-500 text-6xl" />
+                )}
+
+                <input
+                  type="file"
+                  accept="image/*"
+                  id="profile-upload"
+                  className="hidden"
+                  onChange={handleImageChange}
+                />
+
+                <label
+                  htmlFor="profile-upload"
+                  className="absolute -bottom-1 right-10 bg-gray-200 px-3 py-1 rounded-full border flex items-center gap-1 shadow hover:bg-gray-100 cursor-pointer text-black text-sm"
+                >
                   <FaPen className="text-sm" />
                   Editar
-                </button>
+                </label>
               </div>
+
               <textarea
                 className="mt-6 w-full border rounded-xl p-3 resize-none min-h-[100px]"
                 placeholder="+ Descrição"
@@ -61,7 +98,7 @@ export default function EditProfile() {
                 </div>
 
                 <div className="relative">
-                  <FaUser className="absolute left-3 top-3 text-gray-500" />
+                  <FaAddressCard className="absolute left-3 top-3 text-gray-500" />
                   <input
                     type="text"
                     placeholder="Sobrenome"
@@ -72,10 +109,10 @@ export default function EditProfile() {
                 </div>
 
                 <div className="relative">
-                  <FaUser className="absolute left-3 top-3 text-gray-500" />
+                  <FaIdBadge className="absolute left-3 top-3 text-gray-500" />
                   <input
                     type="text"
-                    placeholder="UserName"
+                    placeholder="Usuário"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     className="w-full pl-10 pr-4 py-2 border rounded-full"
@@ -97,7 +134,11 @@ export default function EditProfile() {
               <div className="flex gap-4 mt-6 justify-center">
                 <button
                   onClick={handleVerPerfil}
-                  className="bg-black text-white px-6 py-2 rounded-full hover:bg-gray-800 w-32"
+                  className={`px-6 py-2 rounded-full w-32 text-white transition-colors ${
+                    isFormValid
+                      ? "bg-black hover:bg-gray-800"
+                      : "bg-gray-400 cursor-not-allowed"
+                  }`}
                 >
                   Salvar
                 </button>
