@@ -24,7 +24,7 @@ COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/pytho
 COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copiar código da aplicação
-COPY src/cloud-storage-app/ ./cloud-storage-app/
+COPY src/cloud_storage_app/ ./cloud_storage_app/
 
 # Criar diretório de dados e ajustar permissões
 RUN mkdir -p /app/data && chmod 777 /app/data
@@ -35,4 +35,4 @@ EXPOSE 8080
 USER nobody
 
 # Usar uvicorn diretamente em vez de gunicorn para simplificar
-CMD ["uvicorn", "cloud-storage-app.main:app", "--host", "0.0.0.0", "--port", "8080"] 
+CMD ["uvicorn", "cloud_storage_app.main:app", "--host", "0.0.0.0", "--port", "8080"] 

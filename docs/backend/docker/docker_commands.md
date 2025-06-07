@@ -19,3 +19,7 @@ docker build -f Dockerfile.dev -t backend-image . && docker run -d --name backen
 Para parar o conteiner backend:
 
 docker stop backend-container
+
+
+# Para acessar o banco de dados do postgres pelo docker
+docker exec -it postgres_db psql -U seu_usuario -d seu_banco
