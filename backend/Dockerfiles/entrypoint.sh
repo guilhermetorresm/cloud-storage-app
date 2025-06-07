@@ -1,13 +1,9 @@
 #!/bin/bash
+set -e
 
-# Esperar o banco de dados estar pronto
-echo "🔄 Aguardando o banco de dados estar pronto..."
-while ! nc -z db 5432; do
-  sleep 1
-done
-echo "✅ Banco de dados está pronto!"
+echo "🚀 Iniciando setup do backend..."
 
-# Executar setup do banco de dados
+# Executar setup do banco de dados (inclui verificação de conexão e migrações)
 echo "🔄 Executando setup do banco de dados..."
 python scripts/setup_database.py migrate
 
