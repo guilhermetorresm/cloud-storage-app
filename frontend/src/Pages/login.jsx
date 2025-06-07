@@ -11,6 +11,9 @@ export default function LoginScreen() {
   const [senha, setSenha] = useState("");
   const navigate = useNavigate();
 
+  // Só habilita se ambos campos estiverem preenchidos (sem espaços)
+  const isFormValid = usuario.trim() !== "" && senha.trim() !== "";
+
   const handleLogin = () => {
     console.log("Login:", { usuario, senha });
     navigate("/dashboard");
@@ -51,7 +54,12 @@ export default function LoginScreen() {
             </button>
           </div>
 
-          <Button onClick={handleLogin} type="submit" className="w-full">
+          <Button
+            onClick={handleLogin}
+            type="submit"
+            className="w-full"
+            disabled={!isFormValid}
+          >
             Entrar
           </Button>
 
