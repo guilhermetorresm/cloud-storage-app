@@ -1,0 +1,51 @@
+services:
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfiles/Dockerfile.dev
+    container_name: backend
+    volumes:
+      - ./src/cloud_storage_app:/app/cloud_storage_app
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    env_file:
+      - .env
+    depends_on:
+      - db
+    networks:
+      - app-network
+    develop:
+      watch:
+        - action: sync+restart
+          path: /.
+          target: /app
+        - action: rebuild
+          path: pyproject.toml
+          target: /app/pyproject.toml
+
+  db:
+    image: postgres:15-alpine
+    container_name: postgres_db
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    networks:
+      - app-network
+  
+volumes:
+  postgres_data:
+
+networks:
+  app-network:
+    external: true
+    name: cloud-storage-app_app-network
