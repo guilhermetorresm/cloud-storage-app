@@ -6,7 +6,7 @@ class HashedPassword:
     value: str
 
     def __post_init__(self):
-        if not self.self.value:
+        if not self.value:
             raise ValueError("Hash de senha não pode ser vazio")
         
         # Basic validation for bcrypt hash format
