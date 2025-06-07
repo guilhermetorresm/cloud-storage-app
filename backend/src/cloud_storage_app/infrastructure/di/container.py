@@ -11,7 +11,11 @@ from cloud_storage_app.infrastructure.auth.jwt_service import JWTService
 from cloud_storage_app.application.services.password_service import PasswordApplicationService
 from cloud_storage_app.infrastructure.database.connection import DatabaseManager
 from cloud_storage_app.infrastructure.database.repositories.user_repository import UserRepository
+
+from cloud_storage_app.application.use_cases.auth.login_use_case import LoginUseCase
+
 from cloud_storage_app.application.use_cases.user.create_user_use_case import CreateUserUseCase
+
 from cloud_storage_app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -73,7 +77,14 @@ class Container(containers.DeclarativeContainer):
         CreateUserUseCase,
         password_service=password_service
         # user_repository removido - será criado internamente no execute()
+
     )
+    
+    # Casos de uso de usuário
+    login_use_case = providers.Factory(
+        LoginUseCase,
+        password_service=password_service,
+        jwt_service=jwt_service
 
 
 # ==========================================
