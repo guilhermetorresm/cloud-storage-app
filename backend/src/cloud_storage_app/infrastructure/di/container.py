@@ -76,8 +76,6 @@ class Container(containers.DeclarativeContainer):
     create_user_use_case = providers.Factory(
         CreateUserUseCase,
         password_service=password_service
-        # user_repository removido - será criado internamente no execute()
-
     )
     
     # Casos de uso de usuário
@@ -85,7 +83,7 @@ class Container(containers.DeclarativeContainer):
         LoginUseCase,
         password_service=password_service,
         jwt_service=jwt_service
-
+    )
 
 # ==========================================
 # SINGLETON THREAD-SAFE

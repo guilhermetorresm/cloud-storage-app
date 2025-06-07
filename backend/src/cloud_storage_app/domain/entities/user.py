@@ -111,6 +111,10 @@ class User:
     @property
     def last_name(self) -> Optional[LastName]:
         return self._last_name if self._last_name else None
+    
+    @property
+    def hashed_password(self) -> HashedPassword:
+        return self._hashed_password
 
     @property
     def full_name(self) -> str:

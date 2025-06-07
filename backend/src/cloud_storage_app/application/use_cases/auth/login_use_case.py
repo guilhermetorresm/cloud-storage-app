@@ -70,6 +70,11 @@ class LoginUseCase:
             
             # 2. Buscar usuário por username
             user = await self._find_user_by_username(request.username)
+            if not user:
+                logger.error("Usuário não encontrado após busca")
+                raise UserNotFoundException("Usuário não encontrado")
+            
+            logger.debug(f"Usuário encontrado: {user.__dict__}")
             
             # 3. Verificar se o usuário está ativo
             self._check_user_status(user)
@@ -88,7 +93,7 @@ class LoginUseCase:
                 username=user.username.value,
                 email=user.email.value,
                 first_name=user.first_name.value,
-                last_name=user.last_name.value,
+                last_name=user.last_name.value if user.last_name else None,
             )
             
             # 7. Preparar resposta
@@ -107,6 +112,7 @@ class LoginUseCase:
             raise
         except Exception as e:
             logger.error(f"Erro inesperado durante login: {str(e)}")
+            logger.debug(f"Detalhes do erro: {e.__class__.__name__}: {str(e)}")
             raise AuthenticationException("Erro interno durante autenticação") from e
     
     async def _validate_request(self, request: UserLoginDTO) -> None:
@@ -137,6 +143,7 @@ class LoginUseCase:
         except ValueError as e:
             raise InvalidCredentialsException("Username ou Senha inválidos") from e
     
+
     async def _find_user_by_username(self, username_str: str) -> User:
         """
         Busca usuário pelo username.
@@ -162,10 +169,15 @@ class LoginUseCase:
             
         except UserNotFoundException:
             raise
+        except ValueError as e:
+            # Tratamento específico para erro de UUID
+            logger.error(f"Erro de validação de UUID: {str(e)}")
+            raise UserNotFoundException("Usuário não encontrado") from e
         except Exception as e:
             logger.error(f"Erro ao buscar usuário por username: {str(e)}")
             raise AuthenticationException("Erro ao buscar usuário") from e
-    
+
+
     def _check_user_status(self, user: User) -> None:
         """
         Verifica se o usuário está em status válido para login.
@@ -200,7 +212,7 @@ class LoginUseCase:
             password = Password(value=password_str)
             
             # Verificar senha usando o serviço de password
-            is_valid = self._password_service.verify_password(password, user.password)
+            is_valid = self._password_service.verify_password(password, user.hashed_password)
             
             if not is_valid:
                 logger.warning(f"Tentativa de login com senha incorreta para usuário: {user.username.value}")
@@ -209,7 +221,7 @@ class LoginUseCase:
             logger.debug(f"Senha validada com sucesso para usuário: {user.username.value}")
             
             # Verificar se a senha precisa ser rehashed (segurança)
-            if self._password_service.needs_rehash(user.password):
+            if self._password_service.needs_rehash(user.hashed_password):
                 logger.info(f"Senha do usuário {user.username.value} precisa ser atualizada")
                 # TODO: Implementar atualização de hash da senha em background
             
@@ -241,7 +253,7 @@ class LoginUseCase:
             
             # Gerar par de tokens
             tokens = self._jwt_service.create_token_pair(
-                user_id=user.id,
+                user_id=user.user_id,
                 email=user.email.value,
                 username=user.username.value,
                 extra_claims=extra_claims
@@ -263,7 +275,7 @@ class LoginUseCase:
         """
         try:
             # Registrar evento de login (audit log)
-            logger.info(f"Login bem-sucedido - Usuário: {user.username.value}, ID: {user.id}")
+            logger.info(f"Login bem-sucedido - Usuário: {user.username.value}, ID: {user.user_id.value}")
             
             # TODO: Implementar auditoria de login se necessário
             # - Registrar IP do usuário
@@ -274,27 +286,4 @@ class LoginUseCase:
         except Exception as e:
             # Não deve falhar o login se o log falhar
             logger.warning(f"Erro ao registrar login bem-sucedido: {str(e)}")
-
-
-# Factory function for dependency injection
-def create_login_use_case(
-    user_repository: IUserRepository,
-    password_service: IPasswordService,
-    jwt_service: JWTService
-) -> LoginUseCase:
-    """
-    Factory para criar instância do LoginUseCase.
-    
-    Args:
-        user_repository: Repositório de usuários
-        password_service: Serviço de senhas
-        jwt_service: Serviço JWT
-        
-    Returns:
-        LoginUseCase: Instância configurada do caso de uso
-    """
-    return LoginUseCase(
-        user_repository=user_repository,
-        password_service=password_service,
-        jwt_service=jwt_service
-    )
+            logger.debug(f"Detalhes do usuário: {user.__dict__}")

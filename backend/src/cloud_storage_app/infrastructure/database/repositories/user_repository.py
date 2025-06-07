@@ -136,7 +136,7 @@ class UserRepository(UserRepositoryInterface):
         user = User.__new__(User)  # Criar sem chamar __init__
         
         # Definir atributos privados diretamente
-        user._user_id = UserId(model.id)
+        user._user_id = UserId.from_string(model.id)  # Usar from_string para converter o ID
         user._username = Username(model.username)
         user._email = Email(model.email)
         user._hashed_password = HashedPassword(model.hashed_password)
