@@ -10,12 +10,12 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cloud_storage_app.domain.entities.user import User
-from cloud_storage_app.domain.value_objects import Password
+from cloud_storage_app.domain.value_objects import Password, HashedPassword
 from cloud_storage_app.domain.value_objects.user_id import UserId
 from cloud_storage_app.infrastructure.database.repositories.user_repository import UserRepository
 from cloud_storage_app.application.dtos.user_dtos import ChangePasswordDTO
 from cloud_storage_app.infrastructure.auth.password_service import PasswordService
-from cloud_storage_app.infrastructure.auth.jwt_service import JWTService  # <- ADICIONAR
+from cloud_storage_app.infrastructure.auth.jwt_service import JWTService
 from cloud_storage_app.domain.exceptions.user_exceptions import (
     UserNotFoundException,
     UserValidationException,
@@ -44,17 +44,17 @@ class ChangePasswordUseCase:
     def __init__(
         self,
         password_service: PasswordService,
-        jwt_service: JWTService,  # <- ADICIONAR
+        jwt_service: JWTService,
     ):
         self._password_service = password_service
-        self._jwt_service = jwt_service  # <- ADICIONAR
+        self._jwt_service = jwt_service
         self._db_session = None  # Será definida no execute()
         self._user_repository = None  # Será criada no execute()
         logger.debug("ChangePasswordUseCase inicializado")
     
     async def execute(
         self, 
-        access_token: str,  # <- ALTERAR de user_id para access_token
+        access_token: str,
         change_password_dto: ChangePasswordDTO, 
         db_session: AsyncSession
     ) -> None:
@@ -97,10 +97,13 @@ class ChangePasswordUseCase:
             # 6. Hashear nova senha
             new_hashed_password = self._hash_new_password(change_password_dto.new_password)
             
-            # 7. Atualizar senha no banco de dados
-            await self._update_user_password(user, new_hashed_password)
+            # 7. Atualizar senha na entidade
+            user.change_password(new_hashed_password)
             
-            # 8. Confirmar transação
+            # 8. Persistir mudanças no banco de dados usando o repositório
+            await self._user_repository.save(user)
+            
+            # 9. Confirmar transação
             await self._db_session.commit()
             
             logger.info(f"Senha alterada com sucesso para usuário: {user.username.value}")
@@ -284,7 +287,7 @@ class ChangePasswordUseCase:
         
         logger.debug("Nova senha é diferente da atual - validação passou")
     
-    def _hash_new_password(self, new_password: str) -> Password:
+    def _hash_new_password(self, new_password: str) -> HashedPassword:
         """
         Cria hash da nova senha.
         
@@ -292,7 +295,7 @@ class ChangePasswordUseCase:
             new_password: Nova senha em texto plano
             
         Returns:
-            Password: Value object com a senha hasheada
+            HashedPassword: Value object com a senha hasheada
             
         Raises:
             InvalidPasswordException: Se houver erro ao hashear a senha
@@ -315,27 +318,3 @@ class ChangePasswordUseCase:
         except Exception as e:
             logger.error(f"Erro inesperado ao hashear nova senha: {str(e)}")
             raise InvalidPasswordException("Erro ao processar nova senha") from e
-    
-    async def _update_user_password(self, user: User, new_hashed_password: Password) -> None:
-        """
-        Atualiza a senha do usuário no banco de dados.
-        
-        Args:
-            user: Entidade do usuário
-            new_hashed_password: Nova senha hasheada
-            
-        Raises:
-            UserValidationException: Se houver erro ao atualizar
-        """
-        try:
-            logger.debug(f"Atualizando senha no banco para usuário: {user.username.value}")
-            user.change_password(new_hashed_password)
-            
-            # Salvar no repositório
-            await self._user_repository.save(user)
-            
-            logger.debug("Senha atualizada no banco com sucesso")
-            
-        except Exception as e:
-            logger.error(f"Erro ao atualizar senha no banco: {str(e)}")
-            raise UserValidationException("Erro ao salvar nova senha") from e
