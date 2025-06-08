@@ -16,6 +16,11 @@ from cloud_storage_app.infrastructure.database.repositories.user_repository impo
 from cloud_storage_app.application.dtos.user_dtos import ChangePasswordDTO
 from cloud_storage_app.infrastructure.auth.password_service import PasswordService
 from cloud_storage_app.infrastructure.auth.jwt_service import JWTService
+from cloud_storage_app.infrastructure.auth import (
+    JWTException,
+    InvalidTokenException,
+    ExpiredTokenException
+)
 from cloud_storage_app.domain.exceptions.user_exceptions import (
     UserNotFoundException,
     UserValidationException,
