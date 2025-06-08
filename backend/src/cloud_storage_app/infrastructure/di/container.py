@@ -16,6 +16,7 @@ from cloud_storage_app.application.use_cases.auth.login_use_case import LoginUse
 
 from cloud_storage_app.application.use_cases.user.create_user_use_case import CreateUserUseCase
 from cloud_storage_app.application.use_cases.user.get_current_user_use_case import GetCurrentUserUseCase
+from cloud_storage_app.application.use_cases.user.change_password_use_case import ChangePasswordUseCase
 
 from cloud_storage_app.config import get_settings
 
@@ -85,7 +86,14 @@ class Container(containers.DeclarativeContainer):
         jwt_service=jwt_service
     )
     
-    # Casos de uso de usuário
+    # Caso de uso para mudança de senha
+    change_password_use_case = providers.Factory(
+        ChangePasswordUseCase,
+        password_service=password_service,
+        jwt_service=jwt_service
+    )
+    
+    # Casos de uso de autenticação
     login_use_case = providers.Factory(
         LoginUseCase,
         password_service=password_service,
@@ -211,6 +219,7 @@ get_settings_from_container = Provide[Container.settings]
 # Casos de uso (layer de aplicação)
 get_create_user_use_case = Provide[Container.create_user_use_case]
 get_get_current_user_use_case = Provide[Container.get_current_user_use_case]
+get_change_password_use_case = Provide[Container.change_password_use_case]
 get_login_use_case = Provide[Container.login_use_case]
 
 # Função para obter sessão de banco (context manager)
