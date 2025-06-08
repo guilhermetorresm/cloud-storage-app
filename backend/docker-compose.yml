@@ -47,5 +47,4 @@ volumes:
 
 networks:
   app-network:
-    external: true
     name: cloud-storage-app_app-network
