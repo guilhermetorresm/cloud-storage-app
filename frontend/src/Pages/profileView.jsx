@@ -1,11 +1,12 @@
 // src/Pages/editProfile.js
 import { useState } from "react";
-import { FaUser, FaEnvelope, FaLock } from "react-icons/fa";
+import { FaUser, FaEnvelope, FaLock, FaAddressCard, FaIdBadge} from "react-icons/fa";
 import TopbarNoSearch from "../Components/TopbarNoSearch";
 import { Link, useNavigate } from "react-router-dom";
 
 export default function EditProfile() {
-  const [fullName, getFullName] = useState("");
+  const [name, getName] = useState("");
+  const [lastName, getLastName] = useState("");
   const [username, getUsername] = useState("");
   const [description, getDescription] = useState("");
   const navigate = useNavigate();
@@ -32,7 +33,7 @@ export default function EditProfile() {
               <div className="w-40 h-40 rounded-full bg-gray-300 relative">
                 {/* Foto de perfil */}
               </div>
-              <div className="w-full">
+              <div className="py-6 w-full">
                 <label
                   htmlFor="descricao"
                   className="text-sm text-gray-500 mb-px block"
@@ -51,19 +52,37 @@ export default function EditProfile() {
             {/* Lado Direito */}
             <div className="flex-1">
               <div className="flex flex-col">
-                {/* Nome Completo */}
+                {/* Nome */}
                 <label
                   htmlFor="fullName"
                   className="text-sm text-gray-500 mb-px"
                 >
-                  Nome Completo
+                  Nome
                 </label>
                 <div className="relative mb-4 opacity-60">
                   <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                   <input
                     type="text"
-                    placeholder="Nome Completo"
-                    value={fullName}
+                    placeholder="Nome"
+                    value={name}
+                    disabled
+                    className="w-full pl-10 pr-4 py-2 border rounded-full bg-gray-200 cursor-not-allowed"
+                  />
+                </div>
+
+                {/* Sobrenome */}
+                <label
+                  htmlFor="fullName"
+                  className="text-sm text-gray-500 mb-px"
+                >
+                  Sobrenome
+                </label>
+                <div className="relative mb-4 opacity-60">
+                  <FaAddressCard className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                  <input
+                    type="text"
+                    placeholder="Sobrenome"
+                    value={lastName}
                     disabled
                     className="w-full pl-10 pr-4 py-2 border rounded-full bg-gray-200 cursor-not-allowed"
                   />
@@ -77,7 +96,7 @@ export default function EditProfile() {
                   Usuário
                 </label>
                 <div className="relative mb-4 opacity-60">
-                  <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 " />
+                  <FaIdBadge className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 " />
                   <input
                     type="text"
                     placeholder="UserName"
