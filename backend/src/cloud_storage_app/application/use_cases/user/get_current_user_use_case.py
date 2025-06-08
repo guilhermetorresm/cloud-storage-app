@@ -11,7 +11,7 @@ from dependency_injector.wiring import Provide, inject
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cloud_storage_app.domain.entities.user import User
-from cloud_storage_app.domain.repositories.user_repository import UserRepository
+from cloud_storage_app.infrastructure.database.repositories.user_repository import UserRepository
 from cloud_storage_app.domain.value_objects.user_id import UserId
 from cloud_storage_app.infrastructure.auth.jwt_service import JWTService, TokenPayload
 from cloud_storage_app.application.dtos.user_dtos import UserResponseDTO, GetUsersMeDTO
@@ -172,7 +172,7 @@ class GetCurrentUserUseCase:
             AuthenticationException: Para outros erros de busca
         """
         try:
-            logger.debug(f"Buscando usuário por ID: {user_id_str}")
+            logger.info(f"Buscando usuário por ID: {user_id_str}")
             
             # Converter string para UserId
             user_id = UserId(value=user_id_str)

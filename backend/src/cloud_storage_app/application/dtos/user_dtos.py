@@ -75,5 +75,5 @@ class UserLoginResponseDTO(BaseModel):
 
 class GetUsersMeDTO(BaseModel):
     """DTO para obter dados do usuário autenticado."""
-    acess_token: str
+    access_token: str
     
