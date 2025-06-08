@@ -69,11 +69,11 @@ class CreateUserUseCase:
             UserValidationException: Se houver erro de validação nos dados.
             InvalidPasswordException: Se a senha não atender aos requisitos.
         """
-        logger.info(f"Iniciando criação de usuário para o email: {create_user_dto.email}")
-
+        
         # Criar repositório com a sessão
         self._db_session = db_session
         self._user_repository = UserRepository(session=db_session)
+        logger.debug(f"Iniciando criação de usuário para o email: {create_user_dto.email}")
 
         try:
             # 1. Validação dos dados

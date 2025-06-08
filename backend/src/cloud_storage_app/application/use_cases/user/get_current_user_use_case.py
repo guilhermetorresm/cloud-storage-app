@@ -8,12 +8,13 @@ from typing import Optional
 from dataclasses import dataclass
 
 from dependency_injector.wiring import Provide, inject
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from cloud_storage_app.domain.entities.user import User
 from cloud_storage_app.domain.repositories.user_repository import UserRepository
 from cloud_storage_app.domain.value_objects.user_id import UserId
 from cloud_storage_app.infrastructure.auth.jwt_service import JWTService, TokenPayload
-from cloud_storage_app.application.dtos.user_dtos import UserResponseDTO
+from cloud_storage_app.application.dtos.user_dtos import UserResponseDTO, GetUsersMeDTO
 from cloud_storage_app.application.exceptions import (
     AuthenticationException,
     UserNotFoundException
@@ -25,12 +26,6 @@ from cloud_storage_app.infrastructure.auth import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class GetCurrentUserRequest:
-    """Request para obter usuário atual"""
-    access_token: str
 
 
 class GetCurrentUserUseCase:
@@ -47,14 +42,14 @@ class GetCurrentUserUseCase:
     @inject
     def __init__(
         self,
-        user_repository: UserRepository = Provide["user_repository"],
-        jwt_service: JWTService = Provide["jwt_service"],
+        jwt_service: JWTService,
     ):
-        self._user_repository = user_repository
         self._jwt_service = jwt_service
+        self._db_session = None  # Será definida no execute()
+        self._user_repository = None  # Será criada no execute()
         logger.debug("GetCurrentUserUseCase inicializado")
     
-    async def execute(self, request: GetCurrentUserRequest) -> UserResponseDTO:
+    async def execute(self, request: GetUsersMeDTO, db_session: AsyncSession) -> UserResponseDTO:
         """
         Executa o caso de uso para obter usuário atual.
         
@@ -67,6 +62,9 @@ class GetCurrentUserUseCase:
         Raises:
             AuthenticationException: Se o token for inválido, expirado ou usuário não encontrado
         """
+        self._db_session = db_session
+        self._user_repository = UserRepository(session=db_session)
+
         try:
             logger.debug("Iniciando processo de obtenção do usuário atual")
             
@@ -96,7 +94,7 @@ class GetCurrentUserUseCase:
             logger.debug(f"Detalhes do erro: {e.__class__.__name__}: {str(e)}")
             raise AuthenticationException("Erro interno ao obter dados do usuário") from e
     
-    def _validate_request(self, request: GetCurrentUserRequest) -> None:
+    def _validate_request(self, request: GetUsersMeDTO) -> None:
         """
         Valida os dados de entrada do request.
         
