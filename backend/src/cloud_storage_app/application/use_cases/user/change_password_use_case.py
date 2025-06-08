@@ -48,8 +48,8 @@ class ChangePasswordUseCase:
     ):
         self._password_service = password_service
         self._jwt_service = jwt_service
-        self._db_session = None  # Será definida no execute()
-        self._user_repository = None  # Será criada no execute()
+        self._db_session = None
+        self._user_repository = None
         logger.debug("ChangePasswordUseCase inicializado")
     
     async def execute(
@@ -124,46 +124,61 @@ class ChangePasswordUseCase:
 
     async def _extract_user_id_from_token(self, access_token: str) -> str:
         """
-        Extrai o user_id do token JWT.
+        Extrai o user_id do token JWT com validação completa.
         
         Args:
-            access_token: Token JWT
+            access_token: Token JWT de acesso
             
         Returns:
-            str: ID do usuário
+            str: ID do usuário extraído do token
             
         Raises:
-            AuthenticationException: Se o token for inválido
+            AuthenticationException: Se o token for inválido, expirado ou não for um access token
         """
         try:
-            logger.debug("Decodificando token JWT para obter user_id")
+            logger.debug("Iniciando extração de user_id do token JWT")
             
-            # Decodificar token
-            token_payload = self._jwt_service.decode_token(access_token)
+            # Validar entrada
+            if not access_token or not access_token.strip():
+                logger.warning("Token vazio fornecido")
+                raise AuthenticationException("Token de acesso é obrigatório")
+            
+            # Decodificar token e obter payload
+            payload = self._jwt_service.decode_token(access_token)
+            
+            # Validar se é access token (não refresh token)
+            if not self._jwt_service.validate_token_type(payload, "access"):
+                logger.warning("Token fornecido não é um access token")
+                raise AuthenticationException("Operação requer token de acesso válido")
             
             # Extrair user_id do payload
-            # Se token_payload for um objeto TokenPayload, usar atributo
-            if hasattr(token_payload, 'sub'):
-                user_id = token_payload.sub
-            # Se for um dicionário, usar get()
-            elif isinstance(token_payload, dict):
-                user_id = token_payload.get("sub")
-            else:
-                # Tentar acessar como atributo primeiro
-                try:
-                    user_id = getattr(token_payload, 'sub', None)
-                except AttributeError:
-                    user_id = None
-            
+            user_id = payload.sub
             if not user_id:
-                raise AuthenticationException("Token inválido: user_id não encontrado")
+                logger.error("Token válido mas sem subject (user_id)")
+                raise AuthenticationException("Token inválido: identificador de usuário não encontrado")
             
-            logger.debug(f"User ID extraído do token: {user_id}")
+            logger.debug(f"User ID extraído com sucesso: {user_id}")
             return user_id
             
+        except AuthenticationException:
+            # Re-lançar exceções de autenticação já processadas
+            raise
+            
+        except ExpiredTokenException as e:
+            logger.warning(f"Token expirado durante extração de user_id: {str(e)}")
+            raise AuthenticationException("Token expirado. Faça login novamente") from e
+            
+        except InvalidTokenException as e:
+            logger.warning(f"Token inválido durante extração de user_id: {str(e)}")
+            raise AuthenticationException("Token inválido. Faça login novamente") from e
+            
+        except JWTException as e:
+            logger.error(f"Erro do serviço JWT: {str(e)}")
+            raise AuthenticationException("Erro ao processar token de autenticação") from e
+            
         except Exception as e:
-            logger.error(f"Erro ao decodificar token: {str(e)}")
-            raise AuthenticationException("Token inválido") from e
+            logger.error(f"Erro inesperado ao extrair user_id: {str(e)}", exc_info=True)
+            raise AuthenticationException("Erro interno ao processar autenticação") from e
     
     def _validate_input(self, change_password_dto: ChangePasswordDTO) -> None:
         """
