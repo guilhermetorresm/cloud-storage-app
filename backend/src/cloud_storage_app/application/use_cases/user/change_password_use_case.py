@@ -15,6 +15,7 @@ from cloud_storage_app.domain.value_objects.user_id import UserId
 from cloud_storage_app.infrastructure.database.repositories.user_repository import UserRepository
 from cloud_storage_app.application.dtos.user_dtos import ChangePasswordDTO
 from cloud_storage_app.infrastructure.auth.password_service import PasswordService
+from cloud_storage_app.infrastructure.auth.jwt_service import JWTService  # <- ADICIONAR
 from cloud_storage_app.domain.exceptions.user_exceptions import (
     UserNotFoundException,
     UserValidationException,
@@ -32,6 +33,7 @@ class ChangePasswordUseCase:
     Caso de uso para alteração de senha do usuário.
     
     Responsabilidades:
+    - Decodificar token JWT para obter user_id
     - Validar se a senha atual está correta
     - Verificar se a nova senha é diferente da atual
     - Hashear a nova senha
@@ -42,15 +44,17 @@ class ChangePasswordUseCase:
     def __init__(
         self,
         password_service: PasswordService,
+        jwt_service: JWTService,  # <- ADICIONAR
     ):
         self._password_service = password_service
+        self._jwt_service = jwt_service  # <- ADICIONAR
         self._db_session = None  # Será definida no execute()
         self._user_repository = None  # Será criada no execute()
         logger.debug("ChangePasswordUseCase inicializado")
     
     async def execute(
         self, 
-        user_id: str, 
+        access_token: str,  # <- ALTERAR de user_id para access_token
         change_password_dto: ChangePasswordDTO, 
         db_session: AsyncSession
     ) -> None:
@@ -58,13 +62,13 @@ class ChangePasswordUseCase:
         Executa o caso de uso para alterar a senha do usuário.
         
         Args:
-            user_id: ID do usuário que está alterando a senha
+            access_token: Token JWT do usuário autenticado
             change_password_dto: DTO com senha atual e nova senha
             db_session: Sessão do banco de dados
             
         Raises:
             UserNotFoundException: Se o usuário não for encontrado
-            AuthenticationException: Se a senha atual estiver incorreta
+            AuthenticationException: Se a senha atual estiver incorreta ou token inválido
             InvalidPasswordException: Se a nova senha não atender aos requisitos
             UserValidationException: Se houver erro de validação
         """
@@ -72,28 +76,31 @@ class ChangePasswordUseCase:
         self._db_session = db_session
         self._user_repository = UserRepository(session=db_session)
         
-        logger.debug(f"Iniciando alteração de senha para usuário: {user_id}")
+        logger.debug("Iniciando alteração de senha para usuário autenticado")
         
         try:
             # 1. Validar dados de entrada
             self._validate_input(change_password_dto)
             
-            # 2. Buscar usuário no banco de dados
+            # 2. Decodificar token e obter user_id
+            user_id = await self._extract_user_id_from_token(access_token)
+            
+            # 3. Buscar usuário no banco de dados
             user = await self._find_user_by_id(user_id)
             
-            # 3. Verificar senha atual
+            # 4. Verificar senha atual
             await self._verify_current_password(user, change_password_dto.current_password)
             
-            # 4. Verificar se a nova senha é diferente da atual
+            # 5. Verificar se a nova senha é diferente da atual
             self._check_password_difference(change_password_dto)
             
-            # 5. Hashear nova senha
+            # 6. Hashear nova senha
             new_hashed_password = self._hash_new_password(change_password_dto.new_password)
             
-            # 6. Atualizar senha no banco de dados
+            # 7. Atualizar senha no banco de dados
             await self._update_user_password(user, new_hashed_password)
             
-            # 7. Confirmar transação
+            # 8. Confirmar transação
             await self._db_session.commit()
             
             logger.info(f"Senha alterada com sucesso para usuário: {user.username.value}")
@@ -111,6 +118,37 @@ class ChangePasswordUseCase:
             logger.error(f"Erro inesperado ao alterar senha: {str(e)}")
             await self._db_session.rollback()
             raise
+
+    async def _extract_user_id_from_token(self, access_token: str) -> str:
+        """
+        Extrai o user_id do token JWT.
+        
+        Args:
+            access_token: Token JWT
+            
+        Returns:
+            str: ID do usuário
+            
+        Raises:
+            AuthenticationException: Se o token for inválido
+        """
+        try:
+            logger.debug("Decodificando token JWT para obter user_id")
+            
+            # Decodificar token
+            token_data = self._jwt_service.decode_token(access_token)
+            
+            # Extrair user_id do payload
+            user_id = token_data.get("sub")
+            if not user_id:
+                raise AuthenticationException("Token inválido: user_id não encontrado")
+            
+            logger.debug(f"User ID extraído do token: {user_id}")
+            return user_id
+            
+        except Exception as e:
+            logger.error(f"Erro ao decodificar token: {str(e)}")
+            raise AuthenticationException("Token inválido") from e
     
     def _validate_input(self, change_password_dto: ChangePasswordDTO) -> None:
         """
