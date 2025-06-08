@@ -174,8 +174,8 @@ class GetCurrentUserUseCase:
         try:
             logger.info(f"Buscando usuário por ID: {user_id_str}")
             
-            # Converter string para UserId
-            user_id = UserId(value=user_id_str)
+            # Converter string para UserId usando o método from_string
+            user_id = UserId.from_string(user_id_str)
             
             # Buscar usuário no repositório
             user = await self._user_repository.find_by_id(user_id)
