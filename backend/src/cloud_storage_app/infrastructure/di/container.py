@@ -15,6 +15,7 @@ from cloud_storage_app.infrastructure.database.repositories.user_repository impo
 from cloud_storage_app.application.use_cases.auth.login_use_case import LoginUseCase
 
 from cloud_storage_app.application.use_cases.user.create_user_use_case import CreateUserUseCase
+from cloud_storage_app.application.use_cases.user.get_current_user_use_case import GetCurrentUserUseCase
 
 from cloud_storage_app.config import get_settings
 
@@ -76,6 +77,12 @@ class Container(containers.DeclarativeContainer):
     create_user_use_case = providers.Factory(
         CreateUserUseCase,
         password_service=password_service
+    )
+
+    # Caso de uso para obter usuário atual
+    get_current_user_use_case = providers.Factory(
+        GetCurrentUserUseCase,
+        jwt_service=jwt_service
     )
     
     # Casos de uso de usuário
@@ -203,6 +210,8 @@ get_settings_from_container = Provide[Container.settings]
 
 # Casos de uso (layer de aplicação)
 get_create_user_use_case = Provide[Container.create_user_use_case]
+get_get_current_user_use_case = Provide[Container.get_current_user_use_case]
+get_login_use_case = Provide[Container.login_use_case]
 
 # Função para obter sessão de banco (context manager)
 async def get_database_session():
