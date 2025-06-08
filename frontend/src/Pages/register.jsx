@@ -4,6 +4,7 @@ import { Button } from "../Components/ui/button";
 import { FaCheck, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import TopbarDefault from "../Components/TopbarDefault";
+import axios from "axios";
 
 export default function Register() {
   const [nome, setNome] = useState("");
@@ -47,7 +48,7 @@ export default function Register() {
     isPasswordValid &&
     passwordsMatch;
 
-  const handleCadastro = () => {
+  const handleCadastro = async () => {
     if (!emailValido) {
       setErroEmail("Digite um email válido.");
       return;
@@ -60,7 +61,14 @@ export default function Register() {
       return;
     } else setErroSenha("");
 
-    if (!nome || !sobrenome || !usuario || !email || !senha || !confirmarSenha) {
+    if (
+      !nome ||
+      !sobrenome ||
+      !usuario ||
+      !email ||
+      !senha ||
+      !confirmarSenha
+    ) {
       setErro("Preencha todos os campos.");
       return;
     }
@@ -72,13 +80,49 @@ export default function Register() {
 
     setErro("");
     setErroSenha("");
-    console.log("Cadastro:", { nome, sobrenome, usuario, email, senha });
+    try {
+      const response = await axios.post(
+        `${process.env.REACT_APP_API_URL}/api/v1/users/`,
+        {
+          username: usuario,
+          email: email,
+          password: senha,
+          first_name: nome,
+          last_name: sobrenome,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      console.log("Resposta do servidor:", response.data);
+      setSucesso("Cadastro realizado com sucesso!");
 
-    setSucesso("Cadastro realizado com sucesso!");
-    setTimeout(() => {
-      setSucesso("");
-      navigate("/dashboard");
-    }, 3000);
+      setTimeout(() => {
+        setSucesso("");
+        navigate("/dashboard");
+      }, 3000);
+    } catch (error) {
+      console.error("Erro ao cadastrar:", error);
+
+      if (
+        error.response &&
+        error.response.data &&
+        error.response.data.message
+      ) {
+        setErro(error.response.data.message);
+      } else if (
+        error.response &&
+        error.response.data &&
+        error.response.data.detail
+      ) {
+        // caso o backend use "detail" como mensagem de erro (muito comum em APIs REST)
+        setErro(error.response.data.detail);
+      } else {
+        setErro("Erro ao tentar cadastrar. Tente novamente.");
+      }
+    }
   };
 
   return (
@@ -125,7 +169,9 @@ export default function Register() {
                 }
               }}
             />
-            {erroEmail && <p className="text-red-500 text-xs -mt-2">{erroEmail}</p>}
+            {erroEmail && (
+              <p className="text-red-500 text-xs -mt-2">{erroEmail}</p>
+            )}
 
             {/* Campo senha com botão de mostrar/ocultar */}
             <div className="relative">
@@ -147,22 +193,36 @@ export default function Register() {
 
             {senha && (
               <div className="text-sm mt-1 space-y-1">
-                <p className={hasMinLength ? "text-green-600" : "text-gray-500"}>
+                <p
+                  className={hasMinLength ? "text-green-600" : "text-gray-500"}
+                >
                   <FaCheck className="inline mr-1" /> Mínimo 8 caracteres
                 </p>
-                <p className={hasMaxLength ? "text-green-600" : "text-gray-500"}>
+                <p
+                  className={hasMaxLength ? "text-green-600" : "text-gray-500"}
+                >
                   <FaCheck className="inline mr-1" /> Máximo 128 caracteres
                 </p>
-                <p className={hasUpperLower ? "text-green-600" : "text-gray-500"}>
-                  <FaCheck className="inline mr-1" /> Letras maiúsculas e minúsculas
+                <p
+                  className={hasUpperLower ? "text-green-600" : "text-gray-500"}
+                >
+                  <FaCheck className="inline mr-1" /> Letras maiúsculas e
+                  minúsculas
                 </p>
-                <p className={hasNumberSpecial ? "text-green-600" : "text-gray-500"}>
-                  <FaCheck className="inline mr-1" /> Números e caractere especial
+                <p
+                  className={
+                    hasNumberSpecial ? "text-green-600" : "text-gray-500"
+                  }
+                >
+                  <FaCheck className="inline mr-1" /> Números e caractere
+                  especial
                 </p>
                 <p className={hasNoSpaces ? "text-green-600" : "text-gray-500"}>
                   <FaCheck className="inline mr-1" /> Sem espaços
                 </p>
-                <p className={hasOnlyASCII ? "text-green-600" : "text-gray-500"}>
+                <p
+                  className={hasOnlyASCII ? "text-green-600" : "text-gray-500"}
+                >
                   <FaCheck className="inline mr-1" /> Apenas caracteres válidos
                 </p>
               </div>
@@ -187,11 +247,17 @@ export default function Register() {
             </div>
 
             {confirmarSenha && !passwordsMatch && (
-              <p className="text-red-500 text-xs -mt-2">As senhas não coincidem</p>
+              <p className="text-red-500 text-xs -mt-2">
+                As senhas não coincidem
+              </p>
             )}
-            {erroSenha && <p className="text-red-500 text-sm text-center">{erroSenha}</p>}
+            {erroSenha && (
+              <p className="text-red-500 text-sm text-center">{erroSenha}</p>
+            )}
             {erro && <p className="text-red-500 text-sm text-center">{erro}</p>}
-            {sucesso && <p className="text-green-600 text-sm text-center">{sucesso}</p>}
+            {sucesso && (
+              <p className="text-green-600 text-sm text-center">{sucesso}</p>
+            )}
 
             <div className="relative group">
               <Button
