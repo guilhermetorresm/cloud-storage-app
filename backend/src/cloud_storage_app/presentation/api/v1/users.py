@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from cloud_storage_app.application.use_cases.user.create_user_use_case import CreateUserUseCase
 from cloud_storage_app.application.use_cases.user.get_current_user_use_case import GetCurrentUserUseCase
-from cloud_storage_app.application.dtos.user_dtos import CreateUserDTO, UserResponseDTO, GetUsersMeDTO
+from cloud_storage_app.application.dtos.user_dtos import CreateUserDTO, UserResponseDTO, GetUsersMeDTO, ChangePasswordDTO
 from cloud_storage_app.application.use_cases.user.change_password_use_case import ChangePasswordUseCase
 from cloud_storage_app.presentation.schemas.user_schema import UserCreateSchema, UserResponseSchema
 from cloud_storage_app.presentation.schemas.user_schema import ChangePasswordSchema
@@ -22,7 +22,6 @@ from cloud_storage_app.application.exceptions import (
 )
 
 from cloud_storage_app.infrastructure.di.container import get_database_session, get_container, get_password_service
-
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/users", tags=["users"])

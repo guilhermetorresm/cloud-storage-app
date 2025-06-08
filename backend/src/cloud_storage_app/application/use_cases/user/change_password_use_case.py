@@ -136,10 +136,22 @@ class ChangePasswordUseCase:
             logger.debug("Decodificando token JWT para obter user_id")
             
             # Decodificar token
-            token_data = self._jwt_service.decode_token(access_token)
+            token_payload = self._jwt_service.decode_token(access_token)
             
             # Extrair user_id do payload
-            user_id = token_data.get("sub")
+            # Se token_payload for um objeto TokenPayload, usar atributo
+            if hasattr(token_payload, 'sub'):
+                user_id = token_payload.sub
+            # Se for um dicionário, usar get()
+            elif isinstance(token_payload, dict):
+                user_id = token_payload.get("sub")
+            else:
+                # Tentar acessar como atributo primeiro
+                try:
+                    user_id = getattr(token_payload, 'sub', None)
+                except AttributeError:
+                    user_id = None
+            
             if not user_id:
                 raise AuthenticationException("Token inválido: user_id não encontrado")
             
