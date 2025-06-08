@@ -28,6 +28,7 @@ class UserRepository(UserRepositoryInterface):
             # Atualizar usuário existente
             existing_model.username = user.username.value
             existing_model.email = user.email.value
+            existing_model.hashed_password = user.hashed_password.value
             existing_model.first_name = user.first_name.value
             existing_model.last_name = user.last_name.value if user.last_name else None
             existing_model.profile_picture = user.profile_picture.value if user.profile_picture else None
