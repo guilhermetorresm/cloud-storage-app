@@ -329,9 +329,7 @@ class ChangePasswordUseCase:
         """
         try:
             logger.debug(f"Atualizando senha no banco para usuário: {user.username.value}")
-            
-            # Atualizar a senha do usuário
-            user.hashed_password = new_hashed_password
+            user.change_password(new_hashed_password)
             
             # Salvar no repositório
             await self._user_repository.save(user)
