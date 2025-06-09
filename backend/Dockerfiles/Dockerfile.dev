@@ -22,9 +22,10 @@ COPY scripts ./scripts
 
 # Copiar e configurar o script de entrypoint
 COPY Dockerfiles/entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh && \
+    sed -i 's/\r$//' /app/entrypoint.sh
 
 EXPOSE 8080
 
 # Usar o script de entrypoint
-CMD ["/app/entrypoint.sh"]
+ENTRYPOINT ["/bin/bash", "/app/entrypoint.sh"]

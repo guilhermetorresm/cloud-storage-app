@@ -17,7 +17,7 @@ class UpdateUserDTO(BaseModel):
     first_name: Optional[str] = Field(None, min_length=1, max_length=50)
     last_name: Optional[str] = Field(None, max_length=50)
     username: Optional[str] = Field(None, min_length=3, max_length=30)
-    email: Optional[EmailStr] = None
+    description: Optional[str] = Field(None, max_length=500)
 
 
 class ChangePasswordDTO(BaseModel):
@@ -71,3 +71,9 @@ class UserLoginResponseDTO(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class GetUsersMeDTO(BaseModel):
+    """DTO para obter dados do usuário autenticado."""
+    access_token: str
+    
