@@ -169,7 +169,10 @@ class JWTService:
             expire = now + self._auth_settings.get_access_token_expire_timedelta()
             
             # Garantir que user_id seja string
-            user_id_str = str(user_id) if isinstance(user_id, UserId) else user_id
+            if isinstance(user_id, UserId):
+                user_id_str = str(user_id.value)
+            else:
+                user_id_str = str(user_id)
             
             payload = TokenPayload(
                 sub=user_id_str,

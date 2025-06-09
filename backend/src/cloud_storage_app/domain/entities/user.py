@@ -150,14 +150,14 @@ class User:
                       profile_picture: Optional[str] = None,
                       description: Optional[str] = None) -> None:
         """Atualiza os dados do perfil do usuário."""
-        if first_name:
+        if first_name is not None:
             self._first_name = FirstName(first_name)
-        if last_name:
-            self._last_name = last_name
-        if profile_picture:
-            self._profile_picture = profile_picture
-        if description:
-            self._description = description
+        if last_name is not None:
+            self._last_name = LastName(last_name)
+        if profile_picture is not None:
+            self._profile_picture = ProfilePicture(profile_picture)
+        if description is not None:
+            self._description = UserDescription(description)
         
         self._mark_as_updated()
 

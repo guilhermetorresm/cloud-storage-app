@@ -10,6 +10,9 @@ from cloud_storage_app.domain.value_objects.email import Email
 from cloud_storage_app.domain.value_objects.username import Username
 from cloud_storage_app.infrastructure.database.models.user_model import UserModel
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class UserRepository(UserRepositoryInterface):
     """
@@ -21,44 +24,60 @@ class UserRepository(UserRepositoryInterface):
 
     async def save(self, user: User) -> None:
         """Salva ou atualiza um usuário."""
-        # Buscar se já existe no banco
-        existing_model = await self._session.get(UserModel, user.user_id.value)
-        
-        if existing_model:
-            # Atualizar usuário existente
-            existing_model.username = user.username.value
-            existing_model.email = user.email.value
-            existing_model.first_name = user.first_name.value
-            existing_model.last_name = user.last_name.value if user.last_name else None
-            existing_model.profile_picture = user.profile_picture.value if user.profile_picture else None
-            existing_model.description = user.description.value if user.description else None
-            existing_model.is_active = user.is_active
-            existing_model.updated_at = user.updated_at
-            existing_model.last_login_at = user.last_login_at
-        else:
-            # Criar novo usuário
-            user_model = UserModel(
-                id=user.user_id.value,
-                username=user.username.value,
-                email=user.email.value,
-                hashed_password=user._hashed_password.value,
-                first_name=user.first_name.value,
-                last_name=user.last_name.value if user.last_name else None,
-                profile_picture=user.profile_picture.value if user.profile_picture else None,
-                description=user.description.value if user.description else None,
-                is_active=user.is_active,
-                created_at=user.created_at,
-                updated_at=user.updated_at,
-                last_login_at=user.last_login_at
-            )
-            self._session.add(user_model)
-        
         try:
+            # Buscar se já existe no banco
+            existing_model = await self._session.get(UserModel, user.user_id.value)
+            logger.info(f"Buscando usuário no banco: {user.user_id.value}")
+            
+            if existing_model:
+                logger.info(f"Usuário encontrado, atualizando dados: {user.username.value}")
+                # Atualizar usuário existente
+                existing_model.username = user.username.value
+                existing_model.email = user.email.value
+                existing_model.hashed_password = user.hashed_password.value
+                existing_model.first_name = user.first_name.value
+                existing_model.last_name = user.last_name.value if user.last_name else None
+                existing_model.profile_picture = user.profile_picture.value if user.profile_picture else None
+                existing_model.description = user.description.value if user.description else None
+                existing_model.is_active = user.is_active
+                existing_model.updated_at = user.updated_at
+                existing_model.last_login_at = user.last_login_at
+                
+                logger.info(f"Dados atualizados: first_name={existing_model.first_name}, last_name={existing_model.last_name}, description={existing_model.description}")
+            else:
+                logger.info(f"Usuário não encontrado, criando novo: {user.username.value}")
+                # Criar novo usuário
+                user_model = UserModel(
+                    id=user.user_id.value,
+                    username=user.username.value,
+                    email=user.email.value,
+                    hashed_password=user._hashed_password.value,
+                    first_name=user.first_name.value,
+                    last_name=user.last_name.value if user.last_name else None,
+                    profile_picture=user.profile_picture.value if user.profile_picture else None,
+                    description=user.description.value if user.description else None,
+                    is_active=user.is_active,
+                    created_at=user.created_at,
+                    updated_at=user.updated_at,
+                    last_login_at=user.last_login_at
+                )
+                self._session.add(user_model)
+                logger.info(f"Novo usuário criado: {user_model.username}")
+            
+            # Salvar alterações
             await self._session.flush()
+            await self._session.commit()
+            logger.info(f"Alterações salvas com sucesso para o usuário: {user.username.value}")
+            
         except IntegrityError as e:
+            logger.error(f"Erro de integridade ao salvar usuário: {str(e)}")
             await self._session.rollback()
             raise ValueError(f"Erro ao salvar usuário: {str(e)}")
-
+        except Exception as e:
+            logger.error(f"Erro inesperado ao salvar usuário: {str(e)}")
+            await self._session.rollback()
+            raise ValueError(f"Erro ao salvar usuário: {str(e)}")
+        
     async def find_by_id(self, user_id: UserId) -> Optional[User]:
         """Busca usuário por ID."""
         stmt = select(UserModel).where(UserModel.id == user_id.value)
