@@ -25,6 +25,8 @@ from cloud_storage_app.infrastructure.auth import (
     ExpiredTokenException,
     JWTException
 )
+from cloud_storage_app.domain.value_objects import Username, FirstName, LastName, UserDescription
+from cloud_storage_app.domain.exceptions.user_exceptions import UserAlreadyExistsException
 
 logger = logging.getLogger(__name__)
 
@@ -241,26 +243,56 @@ class UpdateUserUseCase:
             
         Raises:
             ValidationException: Se houver erro na atualização
+            UserAlreadyExistsException: Se o novo username já estiver em uso
         """
         try:
             logger.debug(f"Iniciando atualização dos dados do usuário: {user.username.value}")
             
-            # Atualizar apenas os campos fornecidos
-            if request.first_name:
-                user.first_name = request.first_name
-            if request.last_name:
-                user.last_name = request.last_name
+            logger.info(f"Atualizando dados do usuário com request:\n{request}")
+            
+            # Atualizar dados usando o método update_profile
+            logger.info(f"Dados do usuário atual obtidos:\n{user}")
+            user.update_profile(
+                first_name=request.first_name,
+                last_name=request.last_name,
+                description=request.description
+            )
+            logger.info(f"Dados do usuário atualizados:\n{user}")
+            
+            # Se username for fornecido, validar e atualizar
             if request.username:
-                user.username = request.username
-            if request.description is not None:  # Permite descrição vazia
-                user.description = request.description
+                # Verificar se o novo username é diferente do atual
+                if request.username != user.username.value:
+                    # Verificar se o novo username já está em uso
+                    new_username = Username(request.username)
+                    username_exists = await self._user_repository.exists_by_username(new_username)
+                    
+                    if username_exists:
+                        logger.warning(f"Tentativa de atualizar para username já existente: {request.username}")
+                        raise UserAlreadyExistsException(
+                            identifier=request.username,
+                            identifier_type="username"
+                        )
+                    
+                    # Atualizar username
+                    user._username = new_username
+            
+
+            logger.info(f"Dados do usuário atualizados:\n{user}")
             
             # Salvar alterações no repositório
-            updated_user = await self._user_repository.update(user)
+            await self._user_repository.save(user)
+            
+            # Buscar usuário atualizado
+            updated_user = await self._user_repository.find_by_id(user.user_id)
+            if not updated_user:
+                raise ValidationException("Erro ao buscar usuário após atualização")
             
             logger.info(f"Dados do usuário atualizados com sucesso: {user.username.value}")
             return updated_user
             
+        except UserAlreadyExistsException:
+            raise
         except Exception as e:
             logger.error(f"Erro ao atualizar dados do usuário: {str(e)}")
             raise ValidationException("Erro ao atualizar dados do usuário") from e
