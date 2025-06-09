@@ -7,10 +7,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from cloud_storage_app.application.use_cases.user.create_user_use_case import CreateUserUseCase
 from cloud_storage_app.application.use_cases.user.get_current_user_use_case import GetCurrentUserUseCase
-from cloud_storage_app.application.dtos.user_dtos import CreateUserDTO, UserResponseDTO, GetUsersMeDTO, ChangePasswordDTO
 from cloud_storage_app.application.use_cases.user.change_password_use_case import ChangePasswordUseCase
-from cloud_storage_app.presentation.schemas.user_schema import UserCreateSchema, UserResponseSchema
-from cloud_storage_app.presentation.schemas.user_schema import ChangePasswordSchema
+from cloud_storage_app.application.use_cases.user.update_user_use_case import UpdateUserUseCase
+from cloud_storage_app.application.dtos.user_dtos import (
+    CreateUserDTO, 
+    UserResponseDTO, 
+    GetUsersMeDTO, 
+    ChangePasswordDTO,
+    UpdateUserDTO
+)
+from cloud_storage_app.presentation.schemas.user_schema import (
+    UserCreateSchema, 
+    UserResponseSchema,
+    ChangePasswordSchema,
+    UpdateUserSchema
+)
 from cloud_storage_app.domain.exceptions.user_exceptions import (
     UserAlreadyExistsException,
     UserValidationException,
@@ -18,7 +29,8 @@ from cloud_storage_app.domain.exceptions.user_exceptions import (
 )
 from cloud_storage_app.application.exceptions import (
     AuthenticationException,
-    UserNotFoundException
+    UserNotFoundException,
+    ValidationException
 )
 
 from cloud_storage_app.infrastructure.di.container import get_database_session, get_container, get_password_service
@@ -43,6 +55,11 @@ def get_change_password_use_case() -> ChangePasswordUseCase:
     """Factory para obter o caso de uso do container"""
     container = get_container()
     return container.change_password_use_case()
+
+def get_update_user_use_case() -> UpdateUserUseCase:
+    """Factory para obter o caso de uso do container"""
+    container = get_container()
+    return container.update_user_use_case()
 
 def extract_bearer_token(authorization: Annotated[str, Depends(security)]) -> str:
     """
@@ -498,6 +515,167 @@ async def change_password(
         
     except Exception as e:
         logger.error(f"Erro inesperado na alteração de senha: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro interno do servidor"
+        )
+
+
+@router.patch(
+    "/me",
+    response_model=UserResponseSchema,
+    status_code=status.HTTP_200_OK,
+    summary="Atualizar dados do usuário autenticado",
+    description="Endpoint para atualizar dados do usuário atualmente autenticado",
+    responses={
+        200: {
+            "description": "Dados do usuário atualizados com sucesso",
+            "model": UserResponseSchema
+        },
+        400: {
+            "description": "Dados inválidos para atualização",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Nenhum dado fornecido para atualização",
+                        "error_type": "ValidationException"
+                    }
+                }
+            }
+        },
+        401: {
+            "description": "Token inválido, expirado ou usuário não encontrado",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "token_invalid": {
+                            "summary": "Token inválido",
+                            "value": {"detail": "Token inválido"}
+                        },
+                        "token_expired": {
+                            "summary": "Token expirado",
+                            "value": {"detail": "Token expirado"}
+                        },
+                        "user_not_found": {
+                            "summary": "Usuário não encontrado",
+                            "value": {"detail": "Usuário não encontrado"}
+                        }
+                    }
+                }
+            }
+        },
+        422: {
+            "description": "Dados de entrada inválidos",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Token de acesso é obrigatório"
+                    }
+                }
+            }
+        },
+        500: {
+            "description": "Erro interno do servidor"
+        }
+    }
+)
+async def update_user(
+    user_data: UpdateUserSchema,
+    access_token: str = Depends(extract_bearer_token),
+    update_user_use_case: UpdateUserUseCase = Depends(get_update_user_use_case),
+    db: AsyncSession = Depends(get_database_session)
+) -> UserResponseSchema:
+    """
+    Atualizar dados do usuário autenticado.
+    
+    Este endpoint permite que um usuário autenticado atualize seus dados pessoais,
+    como nome, sobrenome, nome de usuário e descrição.
+    
+    Args:
+        user_data: Dados para atualização do usuário
+        access_token: Token de acesso extraído do cabeçalho Authorization
+        update_user_use_case: Caso de uso injetado para atualização de usuário
+        db: Sessão do banco de dados injetada
+        
+    Returns:
+        UserResponseSchema: Dados atualizados do usuário
+        
+    Raises:
+        HTTPException:
+            - 400: Dados inválidos para atualização
+            - 401: Token inválido, expirado ou usuário não encontrado
+            - 422: Dados de entrada inválidos
+            - 500: Erro interno do servidor
+    """
+    try:
+        logger.info("Recebida requisição para atualizar dados do usuário")
+        
+        # Converter schema para DTO
+        update_user_dto = UpdateUserDTO(
+            first_name=user_data.first_name,
+            last_name=user_data.last_name,
+            username=user_data.username,
+            description=user_data.description
+        )
+        
+        # Executar caso de uso
+        user_response_dto = await update_user_use_case.execute(
+            request=update_user_dto,
+            access_token=access_token,
+            db_session=db
+        )
+        
+        # Converter DTO de resposta para schema de response
+        user_response = UserResponseSchema(
+            user_id=user_response_dto.user_id,
+            username=user_response_dto.username,
+            email=user_response_dto.email,
+            first_name=user_response_dto.first_name,
+            last_name=user_response_dto.last_name,
+            profile_picture=user_response_dto.profile_picture,
+            description=user_response_dto.description,
+            is_active=user_response_dto.is_active,
+            created_at=user_response_dto.created_at,
+            updated_at=user_response_dto.updated_at,
+            last_login_at=user_response_dto.last_login_at
+        )
+        
+        logger.info(f"Dados do usuário atualizados com sucesso: {user_response.username}")
+        return user_response
+        
+    except ValidationException as e:
+        logger.warning(f"Erro de validação na atualização de usuário: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+            headers={"error_type": "ValidationException"}
+        )
+        
+    except AuthenticationException as e:
+        logger.warning(f"Erro de autenticação na atualização de usuário: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e),
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+        
+    except UserNotFoundException as e:
+        logger.warning(f"Usuário não encontrado na atualização: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuário não encontrado",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+        
+    except ValueError as e:
+        logger.error(f"Dados inválidos na atualização de usuário: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e)
+        )
+        
+    except Exception as e:
+        logger.error(f"Erro inesperado na atualização de usuário: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro interno do servidor"
