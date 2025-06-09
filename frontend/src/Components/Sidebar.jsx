@@ -7,6 +7,8 @@ export default function Sidebar() {
 
   const handleExit = () => {
     console.log("Clicou em sair");
+    localStorage.removeItem("access_token"); // seu token de acesso
+    localStorage.removeItem("refresh_token"); // seu token de refresh
     navigate("/");
   };
 
