@@ -12,6 +12,7 @@ export default function EditPassword() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("error"); // "success" ou "error"
 
   const navigate = useNavigate();
 
@@ -20,6 +21,7 @@ export default function EditPassword() {
 
     if (newPassword !== confirmPassword) {
       setMessage("As novas senhas não coincidem.");
+      setMessageType("error");
       return;
     }
 
@@ -41,15 +43,18 @@ export default function EditPassword() {
 
       if (response.ok) {
         setMessage("Senha alterada com sucesso!");
+        setMessageType("success");
         setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
       } else {
         const data = await response.json();
         setMessage(data.message || "Erro ao alterar senha.");
+        setMessageType("error");
       }
     } catch (error) {
       setMessage("Erro ao conectar com o servidor.");
+      setMessageType("error");
     }
   };
 
@@ -58,8 +63,9 @@ export default function EditPassword() {
   const hasUpperLower = /[A-Z]/.test(newPassword) && /[a-z]/.test(newPassword);
   const hasNumberSpecial = /[0-9]/.test(newPassword) && /[^A-Za-z0-9]/.test(newPassword);
   const hasNoSpaces = !/\s/.test(newPassword);
-  const hasOnlyASCII = [...newPassword].every(c => c.charCodeAt(0) < 128);
-  const passwordsMatch = newPassword === confirmPassword && confirmPassword !== "";
+  const hasOnlyASCII = [...newPassword].every((c) => c.charCodeAt(0) < 128);
+  const passwordsMatch =
+    newPassword === confirmPassword && confirmPassword !== "";
 
   return (
     <div className="flex flex-col h-screen">
@@ -71,7 +77,13 @@ export default function EditPassword() {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Mensagem de status */}
             {message && (
-              <p className="text-center text-sm mb-4 text-red-600">{message}</p>
+              <p
+                className={`text-center text-sm mb-4 ${
+                  messageType === "success" ? "text-green-600" : "text-red-600"
+                }`}
+              >
+                {message}
+              </p>
             )}
 
             {/* Senha atual */}
@@ -121,27 +133,51 @@ export default function EditPassword() {
             {/* Regras de senha */}
             {newPassword && (
               <div className="text-sm mt-1 space-y-1">
-                <p className={`${hasMinLength ? "text-green-600" : "text-gray-500"}`}>
+                <p
+                  className={`${
+                    hasMinLength ? "text-green-600" : "text-gray-500"
+                  }`}
+                >
                   <FaCheck className="inline mr-1" />
                   Mínimo 8 caracteres
                 </p>
-                <p className={`${hasMaxLength ? "text-green-600" : "text-gray-500"}`}>
+                <p
+                  className={`${
+                    hasMaxLength ? "text-green-600" : "text-gray-500"
+                  }`}
+                >
                   <FaCheck className="inline mr-1" />
                   Máximo 128 caracteres
                 </p>
-                <p className={`${hasUpperLower ? "text-green-600" : "text-gray-500"}`}>
+                <p
+                  className={`${
+                    hasUpperLower ? "text-green-600" : "text-gray-500"
+                  }`}
+                >
                   <FaCheck className="inline mr-1" />
                   Letras maiúsculas e minúsculas
                 </p>
-                <p className={`${hasNumberSpecial ? "text-green-600" : "text-gray-500"}`}>
+                <p
+                  className={`${
+                    hasNumberSpecial ? "text-green-600" : "text-gray-500"
+                  }`}
+                >
                   <FaCheck className="inline mr-1" />
                   Números e caractere especial
                 </p>
-                <p className={`${hasNoSpaces ? "text-green-600" : "text-gray-500"}`}>
+                <p
+                  className={`${
+                    hasNoSpaces ? "text-green-600" : "text-gray-500"
+                  }`}
+                >
                   <FaCheck className="inline mr-1" />
                   Sem espaços
                 </p>
-                <p className={`${hasOnlyASCII ? "text-green-600" : "text-gray-500"}`}>
+                <p
+                  className={`${
+                    hasOnlyASCII ? "text-green-600" : "text-gray-500"
+                  }`}
+                >
                   <FaCheck className="inline mr-1" />
                   Apenas caracteres válidos (sem Unicode)
                 </p>
@@ -175,7 +211,9 @@ export default function EditPassword() {
                 </button>
               </div>
               {confirmPassword && !passwordsMatch && (
-                <p className="text-red-500 text-xs mt-1">As senhas não coincidem</p>
+                <p className="text-red-500 text-xs mt-1">
+                  As senhas não coincidem
+                </p>
               )}
             </div>
 
@@ -208,7 +246,10 @@ export default function EditPassword() {
 
             {/* Voltar */}
             <div className="text-center">
-              <Link to="/editProfile" className="text-black hover:underline text-sm">
+              <Link
+                to="/editProfile"
+                className="text-black hover:underline text-sm"
+              >
                 Voltar à edição de perfil
               </Link>
             </div>
