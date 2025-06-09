@@ -1,34 +1,54 @@
-import {BrowserRouter as Router, Routes, Route} from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import LoginScreen from "./Pages/login";
 import Dashboard from "./Pages/dashboard";
 import Register from "./Pages/register";
 import EditPassword from "./Pages/editPassword";
 import EditProfile from "./Pages/editProfile";
 import ProfileView from "./Pages/profileView";
- export default function App(){
-  return(
+import PrivateRoute from "./Components/privateRouter";  // importar o componente criado
+
+export default function App() {
+  return (
     <Router>
       <Routes>
-        {/*Página de Login */}
-        <Route path="/" element={<LoginScreen/>}/>
-        
-        {/*DashBoard */}
-        <Route path="/DashBoard" element={<Dashboard/>}/>
+        {/* Página de Login e Registro não precisam de autenticação */}
+        <Route path="/" element={<LoginScreen />} />
+        <Route path="/Register" element={<Register />} />
 
-        {/*Cadastro */}
-        <Route path="/Register" element={<Register/>}/>
-
-        {/*Editar Perfil */}
-        <Route path="/EditProfile" element={<EditProfile/>}/>
-
-        {/*Editar Senha */}
-        <Route path="/EditPassword" element={<EditPassword/>}/>
-
-         {/*Visualizar perfil */}
-         <Route path="/ProfileView" element={<ProfileView/>}/>
-
-
+        {/* Rotas protegidas - só acessa se autenticado */}
+        <Route
+          path="/DashBoard"
+          element={
+            <PrivateRoute>
+              <Dashboard />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/EditProfile"
+          element={
+            <PrivateRoute>
+              <EditProfile />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/EditPassword"
+          element={
+            <PrivateRoute>
+              <EditPassword />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/ProfileView"
+          element={
+            <PrivateRoute>
+              <ProfileView />
+            </PrivateRoute>
+          }
+        />
       </Routes>
     </Router>
   );
- }
+}

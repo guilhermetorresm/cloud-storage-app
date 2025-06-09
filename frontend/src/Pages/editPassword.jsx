@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { FaLock, FaCheck, FaEye, FaEyeSlash } from "react-icons/fa";
 import TopbarNoSearch from "../Components/TopbarNoSearch";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { fetchWithAuth } from "../Utils/fetchWithAuth";
 
 export default function EditPassword() {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -10,6 +11,47 @@ export default function EditPassword() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (newPassword !== confirmPassword) {
+      setMessage("As novas senhas não coincidem.");
+      return;
+    }
+
+    try {
+      const response = await fetchWithAuth(
+        `${process.env.REACT_APP_API_URL}/api/v1/users/me/password`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            current_password: currentPassword,
+            new_password: newPassword,
+          }),
+        },
+        navigate // <- passa o `navigate` aqui
+      );
+
+      if (response.ok) {
+        setMessage("Senha alterada com sucesso!");
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+      } else {
+        const data = await response.json();
+        setMessage(data.message || "Erro ao alterar senha.");
+      }
+    } catch (error) {
+      setMessage("Erro ao conectar com o servidor.");
+    }
+  };
 
   const hasMinLength = newPassword.length >= 8;
   const hasMaxLength = newPassword.length <= 128;
@@ -26,7 +68,12 @@ export default function EditPassword() {
         <div className="bg-white rounded-lg shadow-md p-8 w-full max-w-md">
           <h1 className="text-2xl font-bold text-center mb-2">Alterar senha</h1>
 
-          <div className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Mensagem de status */}
+            {message && (
+              <p className="text-center text-sm mb-4 text-red-600">{message}</p>
+            )}
+
             {/* Senha atual */}
             <div>
               <h2 className="font-medium mb-3">Senha atual</h2>
@@ -37,6 +84,7 @@ export default function EditPassword() {
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   className="w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+                  required
                 />
                 <button
                   type="button"
@@ -58,6 +106,7 @@ export default function EditPassword() {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   className="w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+                  required
                 />
                 <button
                   type="button"
@@ -67,60 +116,37 @@ export default function EditPassword() {
                   {showNewPassword ? <FaEye /> : <FaEyeSlash />}
                 </button>
               </div>
-            </div> 
+            </div>
+
             {/* Regras de senha */}
-                        {newPassword && (
-                          <div className="text-sm mt-1 space-y-1">
-                            <p
-                              className={`${
-                                hasMinLength ? "text-green-600" : "text-gray-500"
-                              }`}
-                            >
-                              <FaCheck className="inline mr-1" />
-                              Mínimo 8 caracteres
-                            </p>            
-                            <p
-                              className={`${
-                                hasMaxLength ? "text-green-600" : "text-gray-500"
-                              }`}
-                            >
-                              <FaCheck className="inline mr-1" />
-                              Máximo 128 caracteres
-                            </p>
-                            <p
-                              className={`${
-                                hasUpperLower ? "text-green-600" : "text-gray-500"
-                              }`}
-                            >
-                              <FaCheck className="inline mr-1" />
-                              Letras maiúsculas e minúsculas
-                            </p>
-                            <p
-                              className={`${
-                                hasNumberSpecial ? "text-green-600" : "text-gray-500"
-                              }`}
-                            >
-                              <FaCheck className="inline mr-1" />
-                              Números e caractere especial
-                            </p>
-                            <p
-                              className={`${
-                                hasNoSpaces ? "text-green-600" : "text-gray-500"
-                              }`}
-                            >
-                              <FaCheck className="inline mr-1" />
-                              Sem espaços
-                            </p>
-                            <p
-                              className={`${
-                                hasOnlyASCII ? "text-green-600" : "text-gray-500"
-                              }`}
-                            >
-                              <FaCheck className="inline mr-1" />
-                              Apenas caracteres válidos (sem Unicode)
-                            </p>
-                          </div>
-                        )}
+            {newPassword && (
+              <div className="text-sm mt-1 space-y-1">
+                <p className={`${hasMinLength ? "text-green-600" : "text-gray-500"}`}>
+                  <FaCheck className="inline mr-1" />
+                  Mínimo 8 caracteres
+                </p>
+                <p className={`${hasMaxLength ? "text-green-600" : "text-gray-500"}`}>
+                  <FaCheck className="inline mr-1" />
+                  Máximo 128 caracteres
+                </p>
+                <p className={`${hasUpperLower ? "text-green-600" : "text-gray-500"}`}>
+                  <FaCheck className="inline mr-1" />
+                  Letras maiúsculas e minúsculas
+                </p>
+                <p className={`${hasNumberSpecial ? "text-green-600" : "text-gray-500"}`}>
+                  <FaCheck className="inline mr-1" />
+                  Números e caractere especial
+                </p>
+                <p className={`${hasNoSpaces ? "text-green-600" : "text-gray-500"}`}>
+                  <FaCheck className="inline mr-1" />
+                  Sem espaços
+                </p>
+                <p className={`${hasOnlyASCII ? "text-green-600" : "text-gray-500"}`}>
+                  <FaCheck className="inline mr-1" />
+                  Apenas caracteres válidos (sem Unicode)
+                </p>
+              </div>
+            )}
 
             {/* Confirmar nova senha */}
             <div>
@@ -132,8 +158,13 @@ export default function EditPassword() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className={`w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                    confirmPassword ? (passwordsMatch ? 'focus:ring-green-500' : 'focus:ring-red-500') : 'focus:ring-black'
+                    confirmPassword
+                      ? passwordsMatch
+                        ? "focus:ring-green-500"
+                        : "focus:ring-red-500"
+                      : "focus:ring-black"
                   }`}
+                  required
                 />
                 <button
                   type="button"
@@ -150,6 +181,7 @@ export default function EditPassword() {
 
             {/* Botão de submit */}
             <button
+              type="submit"
               className={`w-full py-2 rounded-lg transition-colors font-medium ${
                 hasMinLength &&
                 hasUpperLower &&
@@ -158,8 +190,8 @@ export default function EditPassword() {
                 hasOnlyASCII &&
                 passwordsMatch &&
                 currentPassword
-                  ? 'bg-black text-white hover:bg-gray-800'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  ? "bg-black text-white hover:bg-gray-800"
+                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
               }`}
               disabled={
                 !hasMinLength ||
@@ -180,7 +212,7 @@ export default function EditPassword() {
                 Voltar à edição de perfil
               </Link>
             </div>
-          </div>
+          </form>
         </div>
       </div>
     </div>
