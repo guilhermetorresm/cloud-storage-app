@@ -1,15 +1,54 @@
-// src/Pages/editProfile.js
-import { useState } from "react";
-import { FaUser, FaEnvelope, FaLock, FaAddressCard, FaIdBadge} from "react-icons/fa";
+
+import { useState, useEffect } from "react";
+import {
+  FaUser,
+  FaEnvelope,
+  FaLock,
+  FaAddressCard,
+  FaIdBadge,
+} from "react-icons/fa";
 import TopbarNoSearch from "../Components/TopbarNoSearch";
 import { Link, useNavigate } from "react-router-dom";
+import { fetchWithAuth } from "../Utils/fetchWithAuth"; 
 
 export default function EditProfile() {
-  const [name, getName] = useState("");
+  const [name, getFirstName] = useState("");
   const [lastName, getLastName] = useState("");
   const [username, getUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [description, getDescription] = useState("");
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await fetchWithAuth(`${process.env.REACT_APP_API_URL}/api/v1/users/me`,
+           {
+          method: "GET"},
+          navigate
+        );
+       
+
+        if (!response.ok) {
+          throw new Error("Erro ao buscar perfil");
+        }
+
+        const data = await response.json();
+
+        console.log("Resposta perfil: ", data);
+        
+        getFirstName(data.first_name || "");
+        getLastName(data.last_name || "");
+        getUsername(data.username || "");
+        setEmail(data.email || "");
+        getDescription(data.description || ""); 
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchProfile();
+  }, [navigate]);
 
   const handleEditarPerfil = () => {
     navigate("/editProfile");
@@ -40,12 +79,15 @@ export default function EditProfile() {
                 >
                   Descrição
                 </label>
+                <div className="opacity-60">
+                
                 <textarea
-                  className=" w-full border rounded-xl p-3 resize-none min-h-[100px]"
+                  className=" w-full border rounded-xl bg-gray-200 p-3 resize-none min-h-[100px] text-gray-1000 font-medium"
                   placeholder="+ Descrição"
                   value={description}
                   disabled
                 />
+              </div>
               </div>
             </div>
 
@@ -66,7 +108,7 @@ export default function EditProfile() {
                     placeholder="Nome"
                     value={name}
                     disabled
-                    className="w-full pl-10 pr-4 py-2 border rounded-full bg-gray-200 cursor-not-allowed"
+                    className="w-full pl-10 pr-4 py-2 border rounded-full bg-gray-200 cursor-not-allowed text-gray-1000 font-medium"
                   />
                 </div>
 
@@ -84,7 +126,7 @@ export default function EditProfile() {
                     placeholder="Sobrenome"
                     value={lastName}
                     disabled
-                    className="w-full pl-10 pr-4 py-2 border rounded-full bg-gray-200 cursor-not-allowed"
+                    className="w-full pl-10 pr-4 py-2 border rounded-full bg-gray-200 cursor-not-allowed text-gray-1000 font-medium"
                   />
                 </div>
 
@@ -102,7 +144,7 @@ export default function EditProfile() {
                     placeholder="UserName"
                     value={username}
                     disabled
-                    className="w-full pl-10 pr-4 py-2 border rounded-full bg-gray-200 cursor-not-allowed"
+                    className="w-full pl-10 pr-4 py-2 border rounded-full bg-gray-200 cursor-not-allowed text-gray-1000 font-medium"
                   />
                 </div>
 
@@ -114,9 +156,9 @@ export default function EditProfile() {
                   <FaEnvelope className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                   <input
                     type="email"
-                    value="usuario@email.com"
+                    value={email}
                     disabled
-                    className="w-full pl-10 pr-4 py-2 border rounded-full bg-gray-200 cursor-not-allowed"
+                    className="w-full pl-10 pr-4 py-2 border rounded-full bg-gray-200 cursor-not-allowed text-gray-1000 font-medium"
                   />
                 </div>
               </div>

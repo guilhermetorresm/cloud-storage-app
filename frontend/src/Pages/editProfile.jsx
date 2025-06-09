@@ -1,15 +1,47 @@
-import { useState } from "react";
+import { useState, useEffect} from "react";
 import { FaAddressCard, FaIdBadge, FaUser, FaEnvelope, FaLock, FaPen } from "react-icons/fa";
 import TopbarNoSearch from "../Components/TopbarNoSearch";
 import { Link, useNavigate } from "react-router-dom";
+import { fetchWithAuth } from "../Utils/fetchWithAuth";
 
 export default function EditProfile() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [description, setDescription] = useState("");
   const [profileImage, setProfileImage] = useState(null);
+
   const navigate = useNavigate();
+
+  useEffect (() =>{
+    async function fetchUserData() {
+      try {
+        const response = await fetchWithAuth(`${process.env.REACT_APP_API_URL}/api/v1/users/me`
+        );
+       
+
+        if (!response.ok) 
+          throw new Error("Erro ao buscar perfil");
+        
+
+        const data = await response.json();
+
+        console.log("Resposta perfil: ", data);
+        
+        setFirstName(data.first_name);
+        setLastName(data.last_name);
+        setUsername(data.username);
+        setEmail(data.email);
+        setDescription(data.description || ""); 
+      } catch (error) {
+        console.error(error);
+      }
+    }
+    fetchUserData();
+
+  }, [])
+
 
   const isFormValid =
     firstName.trim() !== "" && lastName.trim() !== "" && username.trim() !== "";
@@ -18,9 +50,37 @@ export default function EditProfile() {
     navigate("/dashboard");
   };
 
-  const handleVerPerfil = () => {
+  const handleSave = async () => {
+    if (!isFormValid) return;
+    try {
+    const response = await fetchWithAuth(`${process.env.REACT_APP_API_URL}/api/v1/users/me`, 
+      {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        first_name: firstName,
+        last_name: lastName,
+        username: username,
+        description: description
+      }),
+    });
+
+    if (!response.ok) throw new Error("Erro ao atualizar perfil");
+
+    // Feedback ao usuário (opcional: toast, alerta, etc.)
+    alert("Perfil atualizado com sucesso!");
+
+    // Navegar para visualizar perfil
     navigate("/profileView");
-  };
+
+  } catch (error) {
+    console.error("Erro ao salvar perfil:", error);
+    alert("Erro ao salvar perfil.");
+  }
+};
+  
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -32,6 +92,7 @@ export default function EditProfile() {
       reader.readAsDataURL(file);
     }
   };
+
 
   return (
     <div className="flex flex-col h-screen">
@@ -102,7 +163,7 @@ export default function EditProfile() {
                 >
                   Nome
                 </label>
-                <div className="relative mb-4 opacity-60">
+                <div className="relative mb-4">
                   
                   <FaUser className="absolute left-3 top-3 text-gray-500" />
                   <input
@@ -110,7 +171,7 @@ export default function EditProfile() {
                     placeholder="Nome"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border rounded-full"
+                    className="w-full pl-10 pr-4 py-2 border rounded-full text-black"
                   />
                 </div>
                 
@@ -121,7 +182,7 @@ export default function EditProfile() {
                 >
                   Sobrenome
                 </label>
-                <div className="relative mb-4 opacity-60">
+                <div className="relative mb-4 ">
                   <FaAddressCard className="absolute left-3 top-3 text-gray-500" />
                   <input
                     type="text"
@@ -139,7 +200,7 @@ export default function EditProfile() {
                 >
                   Usuário
                 </label>
-                <div className="relative mb-4 opacity-60">
+                <div className="relative mb-4 ">
                   <FaIdBadge className="absolute left-3 top-3 text-gray-500" />
                   <input
                     type="text"
@@ -162,9 +223,9 @@ export default function EditProfile() {
                   <FaEnvelope className="absolute left-3 top-3 text-gray-500" />
                   <input
                     type="email"
-                    value="usuario@email.com"
+                    value={email}
                     disabled
-                    className="w-full pl-10 pr-4 py-2 border rounded-full bg-gray-200 cursor-not-allowed"
+                    className="w-full pl-10 pr-4 py-2 border rounded-full bg-gray-200 cursor-not-allowed "
                   />
                 </div>
               </div>
@@ -172,7 +233,7 @@ export default function EditProfile() {
               {/* Botões */}
               <div className="flex gap-3 mt-2 justify-center">
                 <button
-                  onClick={handleVerPerfil}
+                  onClick={handleSave}
                   className={`px-6 py-2 rounded-full w-32 text-white transition-colors ${
                     isFormValid
                       ? "bg-black hover:bg-gray-800"
