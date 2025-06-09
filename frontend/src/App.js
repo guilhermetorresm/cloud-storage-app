@@ -1,12 +1,54 @@
-import './App.css';
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import LoginScreen from "./Pages/login";
+import Dashboard from "./Pages/dashboard";
+import Register from "./Pages/register";
+import EditPassword from "./Pages/editPassword";
+import EditProfile from "./Pages/editProfile";
+import ProfileView from "./Pages/profileView";
+import PrivateRoute from "./Components/privateRouter";  // importar o componente criado
 
-function App() {
+export default function App() {
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-      <h1 className="text-4xl font-bold text-blue-600">Tailwind está funcionando! 🎉</h1>
-    </div>
+    <Router>
+      <Routes>
+        {/* Página de Login e Registro não precisam de autenticação */}
+        <Route path="/" element={<LoginScreen />} />
+        <Route path="/Register" element={<Register />} />
+
+        {/* Rotas protegidas - só acessa se autenticado */}
+        <Route
+          path="/DashBoard"
+          element={
+            <PrivateRoute>
+              <Dashboard />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/EditProfile"
+          element={
+            <PrivateRoute>
+              <EditProfile />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/EditPassword"
+          element={
+            <PrivateRoute>
+              <EditPassword />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/ProfileView"
+          element={
+            <PrivateRoute>
+              <ProfileView />
+            </PrivateRoute>
+          }
+        />
+      </Routes>
+    </Router>
   );
 }
-
-export default App;
-
