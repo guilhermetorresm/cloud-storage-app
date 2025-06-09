@@ -23,3 +23,24 @@ export async function refreshAccessToken() {
     return false;
   }
 }
+
+
+
+// authUtils.js
+export async function getCurrentUser() {
+  const token = localStorage.getItem("access_token");
+
+  const response = await fetch(`${process.env.REACT_APP_API_URL}/api/v1/users/me`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("Erro ao buscar perfil");
+  }
+
+  return await response.json();
+}

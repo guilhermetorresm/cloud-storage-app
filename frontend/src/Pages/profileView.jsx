@@ -12,7 +12,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { fetchWithAuth } from "../Utils/fetchWithAuth"; 
 
 export default function EditProfile() {
-  const [name, getName] = useState("");
+  const [name, getFirstName] = useState("");
   const [lastName, getLastName] = useState("");
   const [username, getUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -37,7 +37,7 @@ export default function EditProfile() {
 
         console.log("Resposta perfil: ", data);
         
-        getName(data.first_name || "");
+        getFirstName(data.first_name || "");
         getLastName(data.last_name || "");
         getUsername(data.username || "");
         setEmail(data.email || "");
@@ -79,12 +79,15 @@ export default function EditProfile() {
                 >
                   Descrição
                 </label>
+                <div className="opacity-60">
+                
                 <textarea
-                  className=" w-full border rounded-xl p-3 resize-none min-h-[100px]"
+                  className=" w-full border rounded-xl bg-gray-200 p-3 resize-none min-h-[100px] text-gray-1000 font-medium"
                   placeholder="+ Descrição"
                   value={description}
                   disabled
                 />
+              </div>
               </div>
             </div>
 
