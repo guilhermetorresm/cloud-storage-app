@@ -19,10 +19,13 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     try {
+      
       const response = await login(usuario, senha);
-      const { access_token } = response.data;
+      const { access_token, refresh_token } = response.data;
 
-      localStorage.setItem("token", access_token);
+
+      localStorage.setItem("access_token", access_token);
+      localStorage.setItem("refresh_token", refresh_token);
 
       setStatusMsg("");
       setStatusMsgType("success");
