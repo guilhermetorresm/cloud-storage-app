@@ -101,7 +101,7 @@ export default function Register() {
 
       setTimeout(() => {
         setSucesso("");
-        navigate("/dashboard");
+        navigate("/");
       }, 3000);
     } catch (error) {
       console.error("Erro ao cadastrar:", error);
