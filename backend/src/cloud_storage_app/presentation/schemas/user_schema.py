@@ -136,3 +136,18 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     """Schema para dados do token"""
     username: Optional[str] = None
+
+
+class UpdateUserSchema(BaseModel):
+    """Schema para atualização de usuário.
+    
+    Attributes:
+        first_name: Nome do usuário (1-50 caracteres, opcional)
+        last_name: Sobrenome do usuário (opcional, máximo 50 caracteres)
+        username: Nome de usuário único (3-30 caracteres, opcional)
+        description: Descrição do usuário (opcional, máximo 500 caracteres)
+    """
+    first_name: Optional[str] = Field(None, min_length=1, max_length=50, description="Nome do usuário")
+    last_name: Optional[str] = Field(None, max_length=50, description="Sobrenome do usuário (opcional)")
+    username: Optional[str] = Field(None, min_length=3, max_length=30, description="Nome de usuário único")
+    description: Optional[str] = Field(None, max_length=500, description="Descrição do usuário (opcional)")
