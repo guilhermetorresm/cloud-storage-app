@@ -345,7 +345,8 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 
   <p><strong>Felipe Holanda Aguiar de Carvalho</strong><br>
     <a href="mailto:felipehac@ufpi.edu.br">📧 Email</a> •
-    <a href="https://github.com/WhityWolf">🐙 GitHub</a> 
+    <a href="https://github.com/WhityWolf">🐙 GitHub</a> •
+    <a href="https://www.linkedin.com/in/felipe-carvalho-67b0752a8/">💼 LinkedIn</a>
   </p>
 
   <p><strong>Guilherme Torres Melo</strong><br>
