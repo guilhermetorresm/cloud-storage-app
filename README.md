@@ -341,10 +341,28 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 ---
 
 <div align="center">
-  <p>Desenvolvido com ❤️ por <strong>Guilherme Torres Melo</strong></p>
-  <p>
+  <p><strong>Desenvolvido por:</strong></p>
+
+  <p><strong>Felipe Holanda Aguiar de Carvalho</strong><br>
+    <a href="mailto:felipehac@ufpi.edu.br">📧 Email</a> •
+    <a href="https://github.com/WhityWolf">🐙 GitHub</a> 
+  </p>
+
+  <p><strong>Guilherme Torres Melo</strong><br>
     <a href="mailto:guilhermetorresm@ufpi.edu.br">📧 Email</a> •
-    <a href="https://github.com/seu-usuario">🐙 GitHub</a> •
-    <a href="https://linkedin.com/in/seu-perfil">💼 LinkedIn</a>
+    <a href="https://github.com/guilhermetorresm">🐙 GitHub</a> 
+  </p>
+
+  <p><strong>Jordana Bezerra França</strong><br>
+    <a href="mailto:jordanafranca@ufpi.edu.br">📧 Email</a> •
+    <a href="https://github.com/jordanabfranca">🐙 GitHub</a> •
+    <a href="https://www.linkedin.com/in/jordana-bezerra/">💼 LinkedIn</a>
+  </p>
+
+  <p><strong>Nivaldo Nogueira Paranaguá Santos e Silva</strong><br>
+    <a href="mailto:nivaldonogueira2001@ufpi.edu.br">📧 Email</a> •
+    <a href="https://github.com/Naparanagua">🐙 GitHub</a> •
+    <a href="https://www.linkedin.com/in/nivaldo-nogueira/">💼 LinkedIn</a>
   </p>
 </div>
+
