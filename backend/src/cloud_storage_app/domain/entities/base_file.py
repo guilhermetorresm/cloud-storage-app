@@ -55,7 +55,7 @@ class BaseFile(ABC):
     
     @classmethod
     def create(cls, owner_id: UserId, name: str, path: str, 
-               size: int, description: str, tags: List[Tag], **kwargs) -> "BaseFile":
+               size: int, description: str, tags: List[str], **kwargs) -> "BaseFile":
         """
         Cria uma nova instância de arquivo.
         
@@ -70,7 +70,7 @@ class BaseFile(ABC):
         """
         file_name = FileName(name)
         file_type = FileType.from_extension(file_name.extension)
-        
+        tags_list = [Tag(tag) for tag in tags]
         file_instance = cls(
             _file_id=FileId.generate(),
             _owner_id=owner_id,
@@ -79,7 +79,7 @@ class BaseFile(ABC):
             _file_type=file_type,
             _size=FileSize(size),
             _description=FileDescription(description),
-            _tags=tags,
+            _tags=tags_list,
             **kwargs
         )
         

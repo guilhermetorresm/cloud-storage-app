@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from typing import Optional, List
 from .base_file import BaseFile
-from ..value_objects import FileType, FileTypeEnum
 from ..value_objects import Tag
 
 
