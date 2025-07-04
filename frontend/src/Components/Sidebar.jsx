@@ -47,7 +47,7 @@ export default function Sidebar() {
       <div className="space-y-1 flex-1">
         {/* Upload como primeiro item, estilizado */}
         <button
-          className="w-full flex items-center justify-between px-2 py-2 rounded text-left bg-black hover:bg-gray-800"
+          className="w-full flex items-center justify-center px-2 py-2 rounded text-center bg-black hover:bg-gray-800 mb-4 mt-3"
           onClick={handleOpenUploadModal} // Adiciona o onClick para abrir o modal
         >
           <div className="flex items-center space-x-2">

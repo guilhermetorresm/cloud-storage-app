@@ -7,101 +7,53 @@ import {
   FaFileVideo,
   FaFileArchive,
   FaFileAlt,
-  FaArrowLeft,
-  FaArrowRight,
   FaBars,
   FaTimes,
-  FaImage, // Não esqueça de importar FaImage aqui também!
+  FaImage,
 } from "react-icons/fa";
 
-// Mock de arquivos (ATUALIZADO - USE ESTE)
+// Importe o componente FileViewer
+import { FileViewer } from "../Components/file-viewer";
+
+// Mock de arquivos - ATUALIZADO com URLs de exemplo realistas e 'descricao'
 const mockArquivos = [
   {
     id: "1",
-    nome: "Product Demo Video",
-    tipo: "video",
-    url: "https://via.placeholder.com/150x100?text=Video+Placeholder",
-    tamanho: "45.2 MB",
-    dataUpload: "14/01/2024",
-    duracao: "3:24",
-    categoria: "Educational",
+    title: "Product Demo Video", // Renomeado de 'nome'
+    type: "video", // Renomeado de 'tipo'
+    url: "https://www.learningcontainer.com/wp-content/uploads/2020/05/sample-mp4-file.mp4",
+    thumbnail: "https://via.placeholder.com/150x100?text=Video+Thumb", // Renomeado de 'thumbnailUrl'
+    // thumbnailDimensoes: "150x100", // Manter ou remover conforme necessidade, FileViewer não usa
+    size: "45.2 MB", // Renomeado de 'tamanho'
+    uploadDate: "14/01/2024", // Renomeado de 'dataUpload'
+    duration: "3:24", // Renomeado de 'duracao'
+    genre: "Educational", // Renomeado de 'categoria'
+    description: "Comprehensive product demonstration showcasing key features",
+    tags: ["demo", "product", "education"], // Novo campo
+    resolution: "1920x1080", // Novo campo (exemplo)
+    format: "MP4", // Novo campo (exemplo)
   },
-  {
+ {
     id: "2",
-    nome: "Company Logo",
-    tipo: "image",
-    url: "https://via.placeholder.com/150x100?text=Logo",
-    tamanho: "2.1 MB",
-    dataUpload: "13/01/2024",
-    dimensoes: "1920x1080",
-  },
-  {
-    id: "3",
-    nome: "Presentation Audio",
-    tipo: "audio",
-    url: "https://via.placeholder.com/150x100?text=Audio+Placeholder",
-    tamanho: "12.8 MB",
-    dataUpload: "12/01/2024",
-    duracao: "15:30",
-    categoria: "Business",
-  },
-  {
-    id: "4",
-    nome: "Project Proposal",
-    tipo: "pdf",
-    tamanho: "8.5 MB",
-    dataUpload: "10/01/2024",
-    categoria: "Documentation",
-  },
-  {
-    id: "5",
-    nome: "Meeting Notes",
-    tipo: "text",
-    tamanho: "0.2 MB",
-    dataUpload: "09/01/2024",
-    categoria: "Notes",
-  },
-  {
-    id: "6",
-    nome: "Website Backup",
-    tipo: "zip",
-    tamanho: "120 MB",
-    dataUpload: "08/01/2024",
-    categoria: "Backup",
-  },
-  // Adicione mais arquivos para ver a paginação e o layout
-  {
-    id: "7",
-    nome: "Marketing Campaign Report",
-    tipo: "pdf",
-    tamanho: "15.7 MB",
-    dataUpload: "07/01/2024",
-    categoria: "Marketing",
-  },
-  {
-    id: "8",
-    nome: "Team Meeting Video",
-    tipo: "video",
-    url: "https://via.placeholder.com/150x100?text=Team+Video",
-    tamanho: "88.3 MB",
-    dataUpload: "06/01/2024",
-    duracao: "45:10",
-    categoria: "Internal",
-  },
-  {
-    id: "9",
-    nome: "Product Launch Images",
-    tipo: "image",
-    url: "https://via.placeholder.com/150x100?text=Launch+Pics",
-    tamanho: "5.5 MB",
-    dataUpload: "05/01/2024",
-    dimensoes: "1280x720",
-    categoria: "Marketing Assets",
-  },
+    title: "Product Demo Video", // Renomeado de 'nome'
+    type: "video", // Renomeado de 'tipo'
+    url: "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png",
+    thumbnailUrl: "https://via.placeholder.com/150x100?text=Logo+Thumb", // NOVO
+    // thumbnailDimensoes: "150x100", // Manter ou remover conforme necessidade, FileViewer não usa
+    size: "45.2 MB", // Renomeado de 'tamanho'
+    uploadDate: "14/01/2024", // Renomeado de 'dataUpload'
+    duration: "3:24", // Renomeado de 'duracao'
+    genre: "Educational", // Renomeado de 'categoria'
+    description: "Comprehensive product demonstration showcasing key features",
+    tags: ["demo", "product", "education"], // Novo campo
+    resolution: "1920x1080", // Novo campo (exemplo)
+    format: "IMG", // Novo campo (exemplo)
+  }
+  
 ];
 
-// Componente de visualização dos arquivos (ATUALIZADO - USE ESTE)
-const FileCard = ({ file }) => {
+// Componente de visualização dos arquivos
+const FileCard = ({ file, onClick }) => {
   const getTypeColor = (type) => {
     switch (type) {
       case "video":
@@ -141,8 +93,11 @@ const FileCard = ({ file }) => {
   };
 
   return (
-    <div className="relative bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
-      <div className="relative bg-gray-200 h-32 flex items-center justify-center">
+    <div
+      className="relative bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer"
+      onClick={() => onClick(file)}
+    >
+      <div className="relative bg-gray-200 h-32 w-50 flex items-center justify-center">
         {file.tipo === "image" && file.url ? (
           <img
             src={file.url}
@@ -170,15 +125,12 @@ const FileCard = ({ file }) => {
 
       <div className="p-4">
         <h3 className="text-base font-semibold text-gray-800 truncate mb-1">
-          {file.nome}
+          {file.title}
         </h3>
-        <div className="text-gray-600 text-sm">
-          {file.tamanho && <p>{file.tamanho}</p>}
-          {file.dimensoes && <p>{file.dimensoes}</p>}
-          {file.dataUpload && <p>{file.dataUpload}</p>}
-          {file.categoria && (
-            <p className="text-blue-500 text-xs mt-1">{file.categoria}</p>
-          )}
+        <div className="flex justify-between text-xs text-gray-600 mt-2">
+          {file.size && <p>{file.size}</p>}
+          {file.uploadDate && <p>{file.uploadDate}</p>}
+          
         </div>
       </div>
     </div>
@@ -188,6 +140,7 @@ const FileCard = ({ file }) => {
 export default function Dashboard() {
   const [arquivos, setArquivos] = useState([]);
   const [menuAberto, setMenuAberto] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null); // Estado para controlar o modal
 
   useEffect(() => {
     // Simula o carregamento dos arquivos
@@ -196,8 +149,18 @@ export default function Dashboard() {
     }, 500);
   }, []);
 
+  // Função para lidar com o clique no FileCard
+  const handleFileCardClick = (file) => {
+    setSelectedFile(file);
+  };
+
+  // Função para fechar o modal
+  const handleCloseFileViewer = () => {
+    setSelectedFile(null);
+  };
+
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col h-screen">
       <Topbar />
 
       {/* Botão hambúrguer para mobile */}
@@ -233,7 +196,7 @@ export default function Dashboard() {
       )}
 
       {/* Conteúdo principal com sidebar (visível em telas maiores) */}
-      <div className="flex flex-1">
+      <div className="flex flex-1 overflow-hidden">
         <div className="hidden sm:block">
           <Sidebar />
         </div>
@@ -245,13 +208,17 @@ export default function Dashboard() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
                 {arquivos.map((file) => (
-                  <FileCard key={file.id} file={file} />
+                  <FileCard
+                    key={file.id}
+                    file={file}
+                    onClick={handleFileCardClick} // Passa a função de clique
+                  />
                 ))}
               </div>
             )}
           </div>
 
-          {/* Paginação (mantida como está, mas você pode estilizá-la mais tarde) */}
+          {/* 
           <div className="flex justify-center items-center mt-6 space-x-2">
             <button className="p-2 bg-white rounded-full shadow hover:bg-gray-200">
               <FaArrowLeft />
@@ -266,8 +233,14 @@ export default function Dashboard() {
               <FaArrowRight />
             </button>
           </div>
+          Paginação */}
         </main>
       </div>
+
+      {/* Renderiza o FileViewer se houver um arquivo selecionado */}
+      {selectedFile && (
+        <FileViewer file={selectedFile} onClose={handleCloseFileViewer} />
+      )}
     </div>
   );
 }

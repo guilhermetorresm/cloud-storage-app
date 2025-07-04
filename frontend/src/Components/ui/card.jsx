@@ -4,7 +4,7 @@ import PropTypes from 'prop-types';
 
 export function Card({ className = '', ...props }) {
   return (
-    <div className={`rounded-xl border bg-card text-card-foreground shadow ${className}`} {...props} />
+    <div className={`rounded-xl border bg-card text-card-foreground shadow w-full ${className}`} {...props} />
   );
 }
 
