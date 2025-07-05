@@ -22,7 +22,7 @@ class PillowImageProcessingService(ImageProcessingService):
     """
     
     def __init__(self):
-        # Formatos de imagem suportados organizados por tipo (CORRIGIDO: usar minúsculas)
+        # Formatos de imagem suportados organizados por tipo
         self._supported_formats = {
             # Formatos raster (bitmap)
             'raster': {'jpeg', 'jpg', 'png', 'gif', 'webp', 'bmp', 'tiff'},
@@ -44,7 +44,7 @@ class PillowImageProcessingService(ImageProcessingService):
             'svg': 'image/svg+xml'
         }
         
-        # Configurações específicas por formato (CORRIGIDO: usar minúsculas)
+        # Configurações específicas por formato
         self._format_config = {
             'jpeg': {'quality_range': (1, 100), 'supports_transparency': False},
             'png': {'compression_range': (0, 9), 'supports_transparency': True},
@@ -71,7 +71,6 @@ class PillowImageProcessingService(ImageProcessingService):
         if format_type not in self._supported_formats:
             self._supported_formats[format_type] = set()
         
-        # CORRIGIDO: usar minúsculas
         self._supported_formats[format_type].add(format_name.lower())
         
         if mime_type:
@@ -91,12 +90,13 @@ class PillowImageProcessingService(ImageProcessingService):
     async def extract_metadata(self, image_data: bytes, filename: str) -> Dict[str, Any]:
         """
         Extrai metadados completos de uma imagem.
+        Retorna apenas os metadados específicos esperados pela entidade ImageFile.
         """
         try:
             # Determinar formato baseado no conteúdo e extensão
             format_info = await self._detect_format(image_data, filename)
             
-            if format_info['format'] == 'SVG':
+            if format_info['format'] == 'svg':
                 return await self._extract_svg_metadata(image_data, filename)
             else:
                 return await asyncio.get_event_loop().run_in_executor(
@@ -112,7 +112,7 @@ class PillowImageProcessingService(ImageProcessingService):
         # Verificar se é SVG primeiro
         if self._is_svg_data(image_data):
             return {
-                'format': 'svg',  # CORRIGIDO: usar minúsculas
+                'format': 'svg',
                 'is_vector': True,
                 'mime_type': 'image/svg+xml'
             }
@@ -120,7 +120,7 @@ class PillowImageProcessingService(ImageProcessingService):
         # Para formatos raster, usar PIL
         try:
             with Image.open(io.BytesIO(image_data)) as image:
-                format_name = image.format.lower() if image.format else 'unknown'  # CORRIGIDO
+                format_name = image.format.lower() if image.format else 'unknown'
                 return {
                     'format': format_name,
                     'is_vector': False,
@@ -131,7 +131,7 @@ class PillowImageProcessingService(ImageProcessingService):
             ext = os.path.splitext(filename)[1].lower().lstrip('.')
             if ext in self._mime_types:
                 return {
-                    'format': ext,  # CORRIGIDO: já em minúsculas
+                    'format': ext,
                     'is_vector': ext in self._supported_formats['vector'],
                     'mime_type': self._mime_types[ext]
                 }
@@ -167,6 +167,7 @@ class PillowImageProcessingService(ImageProcessingService):
     async def _extract_svg_metadata(self, image_data: bytes, filename: str) -> Dict[str, Any]:
         """
         Extrai metadados específicos de arquivos SVG.
+        Retorna apenas os campos esperados pela entidade ImageFile.
         """
         try:
             svg_text = image_data.decode('utf-8')
@@ -192,40 +193,20 @@ class PillowImageProcessingService(ImageProcessingService):
                     except (ValueError, IndexError):
                         pass
             
-            metadata = {
+            # Retornar apenas os campos esperados pela entidade ImageFile
+            return {
                 'width': int(numeric_width) if numeric_width else None,
                 'height': int(numeric_height) if numeric_height else None,
-                'color_depth': None,
-                'dpi': None,
-                'has_transparency': True,
-                'compression': None,
-                'camera_make': None,
-                'camera_model': None,
-                'taken_at': None,
-                'gps_latitude': None,
-                'gps_longitude': None,
-                
-                # Metadados gerais
-                'format': 'svg',  # CORRIGIDO: usar minúsculas
-                'mime_type': 'image/svg+xml',
-                'file_size': len(image_data),
-                'is_vector': True,
-                'is_animated': bool(list(root.iter('{http://www.w3.org/2000/svg}animate')) or 
-                                  list(root.iter('{http://www.w3.org/2000/svg}animateTransform'))),
-                
-                # Informações específicas do SVG
-                'svg_info': {
-                    'namespace': root.tag if '}' in root.tag else None,
-                    'elements_count': len(list(root.iter())),
-                    'has_text': bool(list(root.iter('{http://www.w3.org/2000/svg}text'))),
-                    'has_images': bool(list(root.iter('{http://www.w3.org/2000/svg}image'))),
-                    'viewbox': viewbox,
-                    'width_original': width,
-                    'height_original': height
-                }
+                'color_depth': None,  # SVG não tem profundidade de cor
+                'dpi': None,  # SVG não tem DPI
+                'has_transparency': True,  # SVG sempre pode ter transparência
+                'compression': None,  # SVG não usa compressão tradicional
+                'camera_make': None,  # SVG não tem dados de câmera
+                'camera_model': None,  # SVG não tem dados de câmera
+                'taken_at': None,  # SVG não tem data de captura
+                'gps_latitude': None,  # SVG não tem dados GPS
+                'gps_longitude': None  # SVG não tem dados GPS
             }
-            
-            return metadata
             
         except Exception as e:
             raise ValueError(f"Erro ao processar SVG: {str(e)}")
@@ -249,11 +230,12 @@ class PillowImageProcessingService(ImageProcessingService):
     def _extract_raster_metadata_sync(self, image_data: bytes, filename: str, format_info: Dict) -> Dict[str, Any]:
         """
         Extração síncrona de metadados para formatos raster.
+        Retorna apenas os campos esperados pela entidade ImageFile.
         """
         with Image.open(io.BytesIO(image_data)) as image:
             width, height = image.size
             mode = image.mode
-            format_name = image.format.lower() if image.format else 'unknown'  # CORRIGIDO
+            format_name = image.format.lower() if image.format else 'unknown'
             
             color_depth = self._calculate_color_depth(mode)
             
@@ -262,8 +244,6 @@ class PillowImageProcessingService(ImageProcessingService):
             
             exif_data = self._extract_exif_sync(image)
             
-            is_animated = getattr(image, 'is_animated', False)
-            
             camera_make = exif_data.get('Make')
             camera_model = exif_data.get('Model')
             taken_at = self._extract_datetime_from_exif(exif_data)
@@ -271,39 +251,25 @@ class PillowImageProcessingService(ImageProcessingService):
             
             compression = self._determine_compression(image, format_name)
             
-            metadata = {
+            # Retornar apenas os campos esperados pela entidade ImageFile
+            return {
                 'width': width,
                 'height': height,
                 'color_depth': color_depth,
-                'dpi': dpi_value,
+                'dpi': int(dpi_value) if dpi_value else None,
                 'has_transparency': self._has_transparency(image),
                 'compression': compression,
                 'camera_make': camera_make,
                 'camera_model': camera_model,
                 'taken_at': taken_at,
                 'gps_latitude': gps_lat,
-                'gps_longitude': gps_lon,
-                
-                # Metadados gerais
-                'format': format_name,
-                'mime_type': format_info['mime_type'],
-                'file_size': len(image_data),
-                'is_vector': False,
-                'is_animated': is_animated,
-                'color_mode': mode,
-                
-                # Dados EXIF completos
-                'exif_data': exif_data,
-                
-                # Informações específicas do formato
-                'format_info': self._get_format_specific_info(format_name, image)
+                'gps_longitude': gps_lon
             }
-            
-            return metadata
     
     def _extract_datetime_from_exif(self, exif_data: Dict[str, Any]) -> Optional[str]:
         """
         Extrai data/hora da foto dos dados EXIF.
+        Retorna no formato ISO esperado pela entidade ImageFile.
         """
         # Campos EXIF que podem conter data/hora
         datetime_fields = ['DateTime', 'DateTimeOriginal', 'DateTimeDigitized']
@@ -311,11 +277,10 @@ class PillowImageProcessingService(ImageProcessingService):
         for field in datetime_fields:
             if field in exif_data:
                 try:
-                    # Converter para formato ISO se necessário
                     datetime_str = str(exif_data[field])
                     # EXIF usa formato "YYYY:MM:DD HH:MM:SS"
                     if ':' in datetime_str and len(datetime_str) >= 19:
-                        # Converter para ISO format
+                        # Converter para ISO format (substituir primeiros dois ':' por '-')
                         iso_str = datetime_str.replace(':', '-', 2)
                         return iso_str
                     return datetime_str
@@ -375,7 +340,7 @@ class PillowImageProcessingService(ImageProcessingService):
         """
         Determina o tipo de compressão da imagem.
         """
-        if format_name == 'jpeg':  # CORRIGIDO: usar minúsculas
+        if format_name == 'jpeg':
             return 'JPEG'
         elif format_name == 'png':
             return image.info.get('compression', 'PNG')
@@ -397,29 +362,6 @@ class PillowImageProcessingService(ImageProcessingService):
             image.mode in ('RGBA', 'LA') or
             (image.mode == 'P' and 'transparency' in image.info)
         )
-    
-    def _get_format_specific_info(self, format_name: str, image: Image.Image) -> Dict[str, Any]:
-        """
-        Obtém informações específicas do formato.
-        """
-        info = {}
-        
-        if format_name in self._format_config:
-            config = self._format_config[format_name]
-            
-            for key, value in config.items():
-                if key.startswith('supports_'):
-                    info[key] = value
-        
-        if hasattr(image, 'info'):
-            if format_name == 'png':
-                info['compression'] = image.info.get('compression', 'unknown')
-            elif format_name == 'jpeg':
-                info['quality'] = image.info.get('quality', 'unknown')
-            elif format_name in ('gif', 'webp'):
-                info['loop_count'] = image.info.get('loop', 0)
-        
-        return info
     
     def _calculate_color_depth(self, mode: str) -> int:
         """
@@ -531,7 +473,7 @@ class PillowImageProcessingService(ImageProcessingService):
         try:
             format_info = await self._detect_format(image_data, "")
             
-            if format_info['format'] == 'SVG':
+            if format_info['format'] == 'svg':
                 return await self._validate_svg_integrity(image_data)
             else:
                 return await asyncio.get_event_loop().run_in_executor(
@@ -568,7 +510,7 @@ class PillowImageProcessingService(ImageProcessingService):
         try:
             format_info = await self._detect_format(image_data, "")
             
-            if format_info['format'] == 'SVG':
+            if format_info['format'] == 'svg':
                 return await self._get_svg_dimensions(image_data)
             else:
                 return await asyncio.get_event_loop().run_in_executor(
@@ -621,7 +563,7 @@ class PillowImageProcessingService(ImageProcessingService):
         try:
             format_info = await self._detect_format(image_data, "")
             
-            if format_info['format'] == 'SVG':
+            if format_info['format'] == 'svg':
                 return {}  # SVG não possui dados EXIF
             else:
                 return await asyncio.get_event_loop().run_in_executor(

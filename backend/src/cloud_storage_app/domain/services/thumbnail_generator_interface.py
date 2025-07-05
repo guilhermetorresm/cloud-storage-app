@@ -3,7 +3,7 @@ Interface para serviços de geração de miniaturas.
 """
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Tuple, Optional, Dict, Any
+from typing import Tuple, Optional, Dict, Any, Union
 
 
 class ThumbnailFormat(Enum):
@@ -30,6 +30,16 @@ class ThumbnailQuality(Enum):
     MEDIUM = 75
     HIGH = 90
     MAXIMUM = 95
+
+
+class ResizeMode(Enum):
+    """
+    Modos de redimensionamento de imagem.
+    """
+    FIT = "fit"  # Mantém proporção, cabe dentro do tamanho
+    FILL = "fill"  # Mantém proporção, preenche o tamanho (crop)
+    STRETCH = "stretch"  # Força tamanho exato, pode distorcer
+    COVER = "cover"  # Mantém proporção, cobre toda a área
 
 
 class ThumbnailGeneratorService(ABC):
@@ -95,8 +105,9 @@ class ThumbnailGeneratorService(ABC):
         self, 
         image_data: bytes, 
         size: Tuple[int, int],
-        maintain_aspect_ratio: bool = True,
-        format: Optional[ThumbnailFormat] = None
+        mode: ResizeMode = ResizeMode.FIT,
+        format: Optional[ThumbnailFormat] = None,
+        quality: ThumbnailQuality = ThumbnailQuality.HIGH
     ) -> bytes:
         """
         Redimensiona uma imagem para o tamanho especificado.
@@ -104,8 +115,9 @@ class ThumbnailGeneratorService(ABC):
         Args:
             image_data: Dados binários da imagem
             size: Novo tamanho (largura, altura)
-            maintain_aspect_ratio: Se deve manter a proporção
+            mode: Modo de redimensionamento
             format: Formato de saída (None para manter o original)
+            quality: Qualidade da imagem redimensionada
             
         Returns:
             Dados binários da imagem redimensionada
@@ -135,7 +147,59 @@ class ThumbnailGeneratorService(ABC):
         """
         pass
     
-    # Métodos adicionais para funcionalidades estendidas
+    @abstractmethod
+    async def is_format_supported(self, format_name: str) -> bool:
+        """
+        Verifica se um formato é suportado.
+        
+        Args:
+            format_name: Nome do formato
+            
+        Returns:
+            True se o formato é suportado
+        """
+        pass
+    
+    @abstractmethod
+    async def is_vector_format(self, format_name: str) -> bool:
+        """
+        Verifica se um formato é vetorial.
+        
+        Args:
+            format_name: Nome do formato
+            
+        Returns:
+            True se o formato é vetorial
+        """
+        pass
+    
+    @abstractmethod
+    async def detect_image_format(self, image_data: bytes) -> str:
+        """
+        Detecta o formato de uma imagem baseado no conteúdo.
+        
+        Args:
+            image_data: Dados binários da imagem
+            
+        Returns:
+            Nome do formato detectado
+        """
+        pass
+    
+    @abstractmethod
+    async def get_image_info(self, image_data: bytes) -> Dict[str, Any]:
+        """
+        Retorna informações sobre uma imagem.
+        
+        Args:
+            image_data: Dados binários da imagem
+            
+        Returns:
+            Dicionário com informações da imagem (dimensões, formato, etc.)
+        """
+        pass
+    
+    # Métodos com implementação padrão
     
     async def generate_multi_size_thumbnails(
         self, 
@@ -181,8 +245,35 @@ class ThumbnailGeneratorService(ABC):
         Returns:
             Tamanho ótimo calculado
         """
-        # Implementação padrão - subclasses podem sobrescrever
-        return max_size
+        try:
+            image_info = await self.get_image_info(image_data)
+            original_width = image_info.get('width', max_size[0])
+            original_height = image_info.get('height', max_size[1])
+            
+            # Se a imagem já é menor que o máximo, manter tamanho original
+            if original_width <= max_size[0] and original_height <= max_size[1]:
+                return (original_width, original_height)
+            
+            # Calcular proporção
+            aspect_ratio = original_width / original_height
+            
+            # Calcular novo tamanho mantendo proporção
+            if aspect_ratio > 1:  # Landscape
+                new_width = max_size[0]
+                new_height = int(max_size[0] / aspect_ratio)
+                if new_height > max_size[1]:
+                    new_height = max_size[1]
+                    new_width = int(max_size[1] * aspect_ratio)
+            else:  # Portrait ou quadrado
+                new_height = max_size[1]
+                new_width = int(max_size[1] * aspect_ratio)
+                if new_width > max_size[0]:
+                    new_width = max_size[0]
+                    new_height = int(max_size[0] / aspect_ratio)
+            
+            return (new_width, new_height)
+        except Exception:
+            return max_size
     
     async def get_format_info(self, format_name: str) -> Dict[str, Any]:
         """
@@ -194,34 +285,85 @@ class ThumbnailGeneratorService(ABC):
         Returns:
             Dicionário com informações do formato
         """
-        # Implementação padrão - subclasses podem sobrescrever
-        return {
+        is_supported = await self.is_format_supported(format_name)
+        is_vector = await self.is_vector_format(format_name)
+        
+        info = {
             'name': format_name,
-            'supported': format_name.lower() in await self.get_supported_image_formats()
+            'supported': is_supported,
+            'vector_format': is_vector,
+            'category': 'vector' if is_vector else 'raster'
         }
+        
+        # Adicionar informações específicas por formato
+        format_lower = format_name.lower()
+        if format_lower in ['jpg', 'jpeg']:
+            info.update({
+                'supports_transparency': False,
+                'supports_animation': False,
+                'quality_range': (1, 100),
+                'typical_use': 'Fotografias e imagens com muitas cores'
+            })
+        elif format_lower == 'png':
+            info.update({
+                'supports_transparency': True,
+                'supports_animation': False,
+                'lossless': True,
+                'typical_use': 'Imagens com transparência, logos, gráficos'
+            })
+        elif format_lower == 'gif':
+            info.update({
+                'supports_transparency': True,
+                'supports_animation': True,
+                'color_limit': 256,
+                'typical_use': 'Animações simples, imagens com poucas cores'
+            })
+        elif format_lower == 'webp':
+            info.update({
+                'supports_transparency': True,
+                'supports_animation': True,
+                'quality_range': (1, 100),
+                'modern_format': True,
+                'typical_use': 'Uso geral web, boa compressão'
+            })
+        elif format_lower == 'svg':
+            info.update({
+                'supports_transparency': True,
+                'supports_animation': True,
+                'vector_format': True,
+                'scalable': True,
+                'typical_use': 'Logos, ícones, gráficos vetoriais'
+            })
+        
+        return info
     
-    def is_format_supported(self, format_name: str) -> bool:
+    async def validate_image_data(self, image_data: bytes) -> bool:
         """
-        Verifica se um formato é suportado.
+        Valida se os dados representam uma imagem válida.
         
         Args:
-            format_name: Nome do formato
+            image_data: Dados binários a serem validados
             
         Returns:
-            True se o formato é suportado
+            True se os dados são válidos
         """
-        # Implementação padrão - subclasses podem sobrescrever
-        return False
+        try:
+            format_name = await self.detect_image_format(image_data)
+            return format_name != 'unknown' and await self.is_format_supported(format_name)
+        except Exception:
+            return False
     
-    def is_vector_format(self, format_name: str) -> bool:
+    async def get_thumbnail_formats_for_input(self, input_format: str) -> list[ThumbnailFormat]:
         """
-        Verifica se um formato é vetorial.
+        Retorna os formatos de thumbnail recomendados para um formato de entrada.
         
         Args:
-            format_name: Nome do formato
+            input_format: Formato da imagem de entrada
             
         Returns:
-            True se o formato é vetorial
+            Lista de formatos recomendados para thumbnail
         """
-        # Implementação padrão - subclasses podem sobrescrever
-        return format_name.upper() == 'SVG'
+        if await self.is_vector_format(input_format):
+            return [ThumbnailFormat.PNG, ThumbnailFormat.WEBP, ThumbnailFormat.SVG]
+        else:
+            return [ThumbnailFormat.JPEG, ThumbnailFormat.WEBP, ThumbnailFormat.PNG]
