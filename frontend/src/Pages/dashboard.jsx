@@ -19,35 +19,33 @@ import { FileViewer } from "../Components/file-viewer";
 const mockArquivos = [
   {
     id: "1",
-    title: "Product Demo Video", // Renomeado de 'nome'
-    type: "video", // Renomeado de 'tipo'
+    title: "Product Demo Video", 
+    type: "video", 
     url: "https://www.learningcontainer.com/wp-content/uploads/2020/05/sample-mp4-file.mp4",
-    thumbnail: "https://via.placeholder.com/150x100?text=Video+Thumb", // Renomeado de 'thumbnailUrl'
-    // thumbnailDimensoes: "150x100", // Manter ou remover conforme necessidade, FileViewer não usa
-    size: "45.2 MB", // Renomeado de 'tamanho'
-    uploadDate: "14/01/2024", // Renomeado de 'dataUpload'
-    duration: "3:24", // Renomeado de 'duracao'
-    genre: "Educational", // Renomeado de 'categoria'
+    thumbnail: "https://via.placeholder.com/150x100?text=Video+Thumb", 
+    
+    size: "45.2 MB", 
+    uploadDate: "14/01/2024",
+    duration: "3:24", 
+    genre: "Educational", 
     description: "Comprehensive product demonstration showcasing key features",
-    tags: ["demo", "product", "education"], // Novo campo
-    resolution: "1920x1080", // Novo campo (exemplo)
-    format: "MP4", // Novo campo (exemplo)
+    tags: ["demo", "product", "education"], 
+    resolution: "1920x1080", 
+    format: "MP4", 
   },
  {
     id: "2",
-    title: "Product Demo Video", // Renomeado de 'nome'
-    type: "video", // Renomeado de 'tipo'
+    title: "Product Demo Video", 
+    type: "image", 
     url: "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png",
-    thumbnailUrl: "https://via.placeholder.com/150x100?text=Logo+Thumb", // NOVO
-    // thumbnailDimensoes: "150x100", // Manter ou remover conforme necessidade, FileViewer não usa
-    size: "45.2 MB", // Renomeado de 'tamanho'
-    uploadDate: "14/01/2024", // Renomeado de 'dataUpload'
-    duration: "3:24", // Renomeado de 'duracao'
-    genre: "Educational", // Renomeado de 'categoria'
+    thumbnailUrl: "https://via.placeholder.com/150x100?text=Logo+Thumb", 
+    size: "45.2 MB", 
+    uploadDate: "14/01/2024", 
+    genre: "Educational", 
     description: "Comprehensive product demonstration showcasing key features",
-    tags: ["demo", "product", "education"], // Novo campo
-    resolution: "1920x1080", // Novo campo (exemplo)
-    format: "IMG", // Novo campo (exemplo)
+    tags: ["demo", "product", "education"],
+    resolution: "1920x1080", 
+    format: "IMG", 
   }
   
 ];
@@ -97,26 +95,25 @@ const FileCard = ({ file, onClick }) => {
       className="relative bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer"
       onClick={() => onClick(file)}
     >
-      <div className="relative bg-gray-200 h-32 w-50 flex items-center justify-center">
-        {file.tipo === "image" && file.url ? (
+      <div className="relative bg-gray-200 h-32 w-50 flex items-center justify-center"> -----Tamanho da imagem         {file.type === "image" && file.url ? (
           <img
             src={file.url}
             alt={file.nome}
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="text-5xl text-gray-400">{getTypeIcon(file.tipo)}</div>
+          <div className="text-5xl text-gray-400">{getTypeIcon(file.type)}</div>
         )}
 
         <div
           className={`absolute top-2 left-2 px-2 py-1 rounded-full text-xs font-semibold ${getTypeColor(
-            file.tipo
+            file.type
           )}`}
         >
-          {file.tipo}
+          {file.type}
         </div>
 
-        {(file.tipo === "video" || file.tipo === "audio") && file.duracao && (
+        {(file.type === "video" || file.type === "audio") && file.duracao && (
           <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
             {file.duracao}
           </div>

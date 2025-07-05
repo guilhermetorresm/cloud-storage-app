@@ -7,7 +7,7 @@ export function Dialog({ open, onOpenChange, children }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
       <div
-        className="relative z-50 rounded-lg bg-white shadow-xl  w-full"
+        className="relative z-50 rounded-lg bg-white shadow-xl  "
         onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside modal content
       >
         {children}

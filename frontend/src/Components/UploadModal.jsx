@@ -139,7 +139,7 @@ export function UploadModal({ isOpen, onClose }) {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden p-0">
+      <DialogContent className=" max-h-[90vh] max-w-screen-2xl overflow-hidden p-0">
         <DialogHeader className="p-6 pb-0">
           <DialogTitle className="text-xl font-semibold">Upload de Arquivos</DialogTitle>
           <Button
@@ -153,7 +153,7 @@ export function UploadModal({ isOpen, onClose }) {
           </Button>
         </DialogHeader>
 
-        <div className="p-6 space-y-6">
+        <div className="p-10 space-y-6 w-full">
           {/* Drop Zone */}
           {!uploadFile && (
             <div
@@ -191,12 +191,10 @@ export function UploadModal({ isOpen, onClose }) {
                 </div>
               </div>
 
-              <Card className="border-gray-200">
-                {/* Removi min-w-0 do CardContent, pois não é necessário aqui */}
-                <CardContent className="p-4">
-                  {/* flex items-start para alinhar ao topo, gap-x-6 para espaçamento */}
+              <Card className="border-gray-200 ">
+                <CardContent className="p-10 w-full">
                   <div className="flex gap-x-6 items-start">
-                    {/* File Preview/Icon */}
+        
                     <div className="flex-shrink-0">
                       {uploadFile.preview ? (
                         <img
@@ -210,11 +208,8 @@ export function UploadModal({ isOpen, onClose }) {
                         </div>
                       )}
                     </div>
-
-                    {/* File Info - Principal container com espaçamento vertical */}
-                    {/* Removi ml-6 aqui, o gap-x-6 do pai é o que importa */}
                     <div className="flex-1 flex flex-col gap-y-3 min-w-0">
-                      <div className="flex items-start justify-between w-full"> {/* Adicionei w-full para garantir que o justify-between funcione */}
+                      <div className="flex items-start justify-between "> 
                         {/* Esta div é o grupo "Badge + Tamanho" */}
                         <div className="flex items-center gap-2">
                           <Badge className={`${fileTypeColors[uploadFile.type]} px-2.5 py-0.5 rounded-full`}>
