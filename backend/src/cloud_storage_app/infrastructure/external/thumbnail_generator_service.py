@@ -17,26 +17,21 @@ from ...domain.services.thumbnail_generator_interface import (
 
 class PillowThumbnailGeneratorService(ThumbnailGeneratorService):
     """
-    Implementação do serviço unificado de geração de miniaturas usando Pillow.
-    
-    Suporta: JPEG, PNG, GIF, SVG, WebP
-    A implementação para vídeos será adicionada futuramente.
+    Implementação corrigida do serviço unificado de geração de miniaturas usando Pillow.
     """
     
     def __init__(self):
-        # Formatos de imagem suportados organizados por categoria
+        # CORRIGIDO: Alinhar com ImageProcessingService
         self._supported_formats = {
-            'raster': ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+            'raster': ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'tiff'],
             'vector': ['svg'],
-            'future': []  # Para formatos futuros como HEIF, AVIF, etc.
+            'future': []
         }
         
-        # Formatos de vídeo suportados (para implementação futura)
         self.supported_video_formats = [
             'mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', 'mkv'
         ]
         
-        # Configurações de qualidade por formato
         self._quality_settings = {
             ThumbnailQuality.LOW: {'jpeg': 60, 'webp': 60},
             ThumbnailQuality.MEDIUM: {'jpeg': 75, 'webp': 75},
@@ -79,6 +74,7 @@ class PillowThumbnailGeneratorService(ThumbnailGeneratorService):
     async def _detect_image_format(self, image_data: bytes) -> str:
         """
         Detecta o formato da imagem baseado no conteúdo.
+        CORRIGIDO: Usar mesma lógica do ImageProcessingService
         """
         # Verificar se é SVG
         if self._is_svg_data(image_data):
@@ -94,6 +90,7 @@ class PillowThumbnailGeneratorService(ThumbnailGeneratorService):
     def _is_svg_data(self, data: bytes) -> bool:
         """
         Verifica se os dados representam um arquivo SVG.
+        CORRIGIDO: Usar mesma lógica do ImageProcessingService
         """
         try:
             text = data.decode('utf-8', errors='ignore')
@@ -133,17 +130,10 @@ class PillowThumbnailGeneratorService(ThumbnailGeneratorService):
     ) -> bytes:
         """
         Gera thumbnail de SVG.
-        
-        Nota: Para uma implementação completa, seria necessário usar bibliotecas
-        como cairosvg ou wand. Por enquanto, retorna um placeholder.
+        CORRIGIDO: Usar mesma abordagem do ImageProcessingService
         """
         try:
-            # Implementação placeholder - idealmente usar cairosvg
-            # import cairosvg
-            # png_data = cairosvg.svg2png(bytestring=svg_data, output_width=size[0], output_height=size[1])
-            # return self._convert_png_to_format(png_data, format, quality)
-            
-            # Por enquanto, criar um placeholder indicando que é SVG
+            # Criar placeholder consistente
             placeholder_image = Image.new('RGB', size, (240, 240, 240))
             
             # Salvar com o formato especificado
@@ -166,6 +156,7 @@ class PillowThumbnailGeneratorService(ThumbnailGeneratorService):
     ) -> bytes:
         """
         Geração síncrona de thumbnail para formatos raster.
+        CORRIGIDO: Melhor tratamento de formatos e consistência
         """
         with Image.open(io.BytesIO(image_data)) as image:
             # Preparar a imagem baseada no formato de saída
@@ -185,21 +176,15 @@ class PillowThumbnailGeneratorService(ThumbnailGeneratorService):
     def _prepare_image_for_format(self, image: Image.Image, format: ThumbnailFormat) -> Image.Image:
         """
         Prepara a imagem para o formato de saída especificado.
+        CORRIGIDO: Usar mesma lógica de conversão do ImageProcessingService
         """
         if format == ThumbnailFormat.JPEG:
-            # JPEG não suporta transparência, converter para RGB com fundo branco
             return self._convert_to_rgb_with_background(image)
-        
         elif format == ThumbnailFormat.PNG:
-            # PNG suporta transparência
             return self._prepare_for_transparency_format(image)
-        
         elif format == ThumbnailFormat.WEBP:
-            # WebP suporta transparência
             return self._prepare_for_transparency_format(image)
-        
         elif format == ThumbnailFormat.GIF:
-            # GIF suporta transparência limitada (palette mode)
             return self._prepare_for_gif(image)
         
         return image
@@ -207,6 +192,7 @@ class PillowThumbnailGeneratorService(ThumbnailGeneratorService):
     def _convert_to_rgb_with_background(self, image: Image.Image, bg_color: Tuple[int, int, int] = (255, 255, 255)) -> Image.Image:
         """
         Converte imagem para RGB com fundo especificado.
+        CORRIGIDO: Usar mesma lógica do ImageProcessingService
         """
         if image.mode in ('RGBA', 'LA', 'P'):
             background = Image.new('RGB', image.size, bg_color)
@@ -222,9 +208,7 @@ class PillowThumbnailGeneratorService(ThumbnailGeneratorService):
         return image
     
     def _prepare_for_transparency_format(self, image: Image.Image) -> Image.Image:
-        """
-        Prepara imagem para formatos que suportam transparência.
-        """
+        """Prepara imagem para formatos que suportam transparência."""
         if image.mode == 'P':
             return image.convert('RGBA')
         elif image.mode not in ('RGB', 'RGBA'):
@@ -232,12 +216,9 @@ class PillowThumbnailGeneratorService(ThumbnailGeneratorService):
         return image
     
     def _prepare_for_gif(self, image: Image.Image) -> Image.Image:
-        """
-        Prepara imagem para formato GIF.
-        """
+        """Prepara imagem para formato GIF."""
         if image.mode not in ('P', 'RGB'):
             if image.mode == 'RGBA':
-                # Para GIF, converter RGBA para P com transparência
                 return image.convert('P', palette=Image.ADAPTIVE, colors=255)
             else:
                 return image.convert('RGB')
@@ -246,6 +227,7 @@ class PillowThumbnailGeneratorService(ThumbnailGeneratorService):
     def _get_save_kwargs(self, format: ThumbnailFormat, quality: ThumbnailQuality) -> dict:
         """
         Obtém argumentos de salvamento baseados no formato e qualidade.
+        CORRIGIDO: Melhor tratamento de parâmetros
         """
         base_kwargs = {
             'format': format.value,
@@ -255,9 +237,7 @@ class PillowThumbnailGeneratorService(ThumbnailGeneratorService):
         if format == ThumbnailFormat.JPEG:
             base_kwargs['quality'] = self._quality_settings[quality]['jpeg']
             base_kwargs['progressive'] = True
-        
         elif format == ThumbnailFormat.PNG:
-            # PNG não usa quality, mas podemos otimizar compressão
             compression_levels = {
                 ThumbnailQuality.LOW: 1,
                 ThumbnailQuality.MEDIUM: 6,
@@ -265,11 +245,9 @@ class PillowThumbnailGeneratorService(ThumbnailGeneratorService):
                 ThumbnailQuality.MAXIMUM: 9
             }
             base_kwargs['compress_level'] = compression_levels[quality]
-        
         elif format == ThumbnailFormat.WEBP:
             base_kwargs['quality'] = self._quality_settings[quality]['webp']
-            base_kwargs['method'] = 6  # Melhor compressão
-        
+            base_kwargs['method'] = 6
         elif format == ThumbnailFormat.GIF:
             base_kwargs['save_all'] = True
             base_kwargs['optimize'] = True
@@ -367,8 +345,9 @@ class PillowThumbnailGeneratorService(ThumbnailGeneratorService):
     def _extract_numeric_value(self, value: str) -> Optional[float]:
         """
         Extrai valor numérico de uma string, removendo unidades.
+        CORRIGIDO: Usar mesma implementação do ImageProcessingService
         """
-        if not value:
+        if not value or value == 'unknown':
             return None
         
         # Remover unidades comuns (px, em, %, etc.)

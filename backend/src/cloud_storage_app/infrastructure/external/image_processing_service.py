@@ -22,12 +22,12 @@ class PillowImageProcessingService(ImageProcessingService):
     """
     
     def __init__(self):
-        # Formatos de imagem suportados organizados por tipo
+        # Formatos de imagem suportados organizados por tipo (CORRIGIDO: usar minúsculas)
         self._supported_formats = {
             # Formatos raster (bitmap)
-            'raster': {'JPEG', 'JPG', 'PNG', 'GIF', 'WEBP', 'BMP', 'TIFF'},
+            'raster': {'jpeg', 'jpg', 'png', 'gif', 'webp', 'bmp', 'tiff'},
             # Formatos vetoriais
-            'vector': {'SVG'},
+            'vector': {'svg'},
             # Formatos especiais/futuros podem ser adicionados aqui
             'special': set()
         }
@@ -44,15 +44,15 @@ class PillowImageProcessingService(ImageProcessingService):
             'svg': 'image/svg+xml'
         }
         
-        # Configurações específicas por formato
+        # Configurações específicas por formato (CORRIGIDO: usar minúsculas)
         self._format_config = {
-            'JPEG': {'quality_range': (1, 100), 'supports_transparency': False},
-            'PNG': {'compression_range': (0, 9), 'supports_transparency': True},
-            'GIF': {'supports_animation': True, 'supports_transparency': True},
-            'WEBP': {'quality_range': (1, 100), 'supports_transparency': True, 'supports_animation': True},
-            'BMP': {'supports_transparency': False},
-            'TIFF': {'supports_transparency': True},
-            'SVG': {'is_vector': True, 'supports_transparency': True}
+            'jpeg': {'quality_range': (1, 100), 'supports_transparency': False},
+            'png': {'compression_range': (0, 9), 'supports_transparency': True},
+            'gif': {'supports_animation': True, 'supports_transparency': True},
+            'webp': {'quality_range': (1, 100), 'supports_transparency': True, 'supports_animation': True},
+            'bmp': {'supports_transparency': False},
+            'tiff': {'supports_transparency': True},
+            'svg': {'is_vector': True, 'supports_transparency': True}
         }
     
     @property
@@ -67,31 +67,26 @@ class PillowImageProcessingService(ImageProcessingService):
                            mime_type: Optional[str] = None, config: Optional[Dict] = None):
         """
         Adiciona suporte para um novo formato de imagem.
-        
-        Args:
-            format_name: Nome do formato (ex: 'HEIF', 'AVIF')
-            format_type: Tipo do formato ('raster', 'vector', 'special')
-            mime_type: Tipo MIME opcional
-            config: Configurações específicas do formato
         """
         if format_type not in self._supported_formats:
             self._supported_formats[format_type] = set()
         
-        self._supported_formats[format_type].add(format_name.upper())
+        # CORRIGIDO: usar minúsculas
+        self._supported_formats[format_type].add(format_name.lower())
         
         if mime_type:
             self._mime_types[format_name.lower()] = mime_type
         
         if config:
-            self._format_config[format_name.upper()] = config
+            self._format_config[format_name.lower()] = config
     
     def is_format_supported(self, format_name: str) -> bool:
         """Verifica se um formato é suportado."""
-        return format_name.upper() in self.supported_formats
+        return format_name.lower() in self.supported_formats
     
     def is_vector_format(self, format_name: str) -> bool:
         """Verifica se um formato é vetorial."""
-        return format_name.upper() in self._supported_formats['vector']
+        return format_name.lower() in self._supported_formats['vector']
     
     async def extract_metadata(self, image_data: bytes, filename: str) -> Dict[str, Any]:
         """
@@ -117,7 +112,7 @@ class PillowImageProcessingService(ImageProcessingService):
         # Verificar se é SVG primeiro
         if self._is_svg_data(image_data):
             return {
-                'format': 'SVG',
+                'format': 'svg',  # CORRIGIDO: usar minúsculas
                 'is_vector': True,
                 'mime_type': 'image/svg+xml'
             }
@@ -125,7 +120,7 @@ class PillowImageProcessingService(ImageProcessingService):
         # Para formatos raster, usar PIL
         try:
             with Image.open(io.BytesIO(image_data)) as image:
-                format_name = image.format
+                format_name = image.format.lower() if image.format else 'unknown'  # CORRIGIDO
                 return {
                     'format': format_name,
                     'is_vector': False,
@@ -136,8 +131,8 @@ class PillowImageProcessingService(ImageProcessingService):
             ext = os.path.splitext(filename)[1].lower().lstrip('.')
             if ext in self._mime_types:
                 return {
-                    'format': ext.upper(),
-                    'is_vector': ext.upper() in self._supported_formats['vector'],
+                    'format': ext,  # CORRIGIDO: já em minúsculas
+                    'is_vector': ext in self._supported_formats['vector'],
                     'mime_type': self._mime_types[ext]
                 }
             raise ValueError(f"Formato de imagem não suportado: {filename}")
@@ -147,10 +142,8 @@ class PillowImageProcessingService(ImageProcessingService):
         Verifica se os dados representam um arquivo SVG.
         """
         try:
-            # Tentar decodificar como texto
             text = data.decode('utf-8', errors='ignore')
-            # Verificar se contém elementos SVG
-            return '<svg' in text.lower() or '<?xml' in text.lower()
+            return '<svg' in text.lower() or ('<?xml' in text.lower() and '<svg' in text.lower())
         except:
             return False
     
@@ -199,22 +192,21 @@ class PillowImageProcessingService(ImageProcessingService):
                     except (ValueError, IndexError):
                         pass
             
-            # Dados específicos para ImageFile
             metadata = {
                 'width': int(numeric_width) if numeric_width else None,
                 'height': int(numeric_height) if numeric_height else None,
-                'color_depth': None,  # SVG não tem profundidade de cor
-                'dpi': None,  # SVG não tem DPI
-                'has_transparency': True,  # SVG sempre suporta transparência
-                'compression': None,  # SVG não usa compressão tradicional
-                'camera_make': None,  # SVG não tem dados EXIF
+                'color_depth': None,
+                'dpi': None,
+                'has_transparency': True,
+                'compression': None,
+                'camera_make': None,
                 'camera_model': None,
                 'taken_at': None,
                 'gps_latitude': None,
                 'gps_longitude': None,
                 
                 # Metadados gerais
-                'format': 'SVG',
+                'format': 'svg',  # CORRIGIDO: usar minúsculas
                 'mime_type': 'image/svg+xml',
                 'file_size': len(image_data),
                 'is_vector': True,
@@ -259,34 +251,26 @@ class PillowImageProcessingService(ImageProcessingService):
         Extração síncrona de metadados para formatos raster.
         """
         with Image.open(io.BytesIO(image_data)) as image:
-            # Propriedades básicas da imagem
             width, height = image.size
             mode = image.mode
-            format_name = image.format
+            format_name = image.format.lower() if image.format else 'unknown'  # CORRIGIDO
             
-            # Calcular profundidade de cor
             color_depth = self._calculate_color_depth(mode)
             
-            # Obter informações de DPI se disponível
             dpi = image.info.get('dpi', (72, 72))
             dpi_value = dpi[0] if isinstance(dpi, tuple) else dpi
             
-            # Extrair dados EXIF
             exif_data = self._extract_exif_sync(image)
             
-            # Verificar se é animado (para GIF e WebP)
             is_animated = getattr(image, 'is_animated', False)
             
-            # Extrair informações específicas dos dados EXIF
             camera_make = exif_data.get('Make')
             camera_model = exif_data.get('Model')
             taken_at = self._extract_datetime_from_exif(exif_data)
             gps_lat, gps_lon = self._extract_gps_from_exif(exif_data)
             
-            # Determinar compressão
             compression = self._determine_compression(image, format_name)
             
-            # Metadados específicos para ImageFile
             metadata = {
                 'width': width,
                 'height': height,
@@ -391,15 +375,15 @@ class PillowImageProcessingService(ImageProcessingService):
         """
         Determina o tipo de compressão da imagem.
         """
-        if format_name == 'JPEG':
+        if format_name == 'jpeg':  # CORRIGIDO: usar minúsculas
             return 'JPEG'
-        elif format_name == 'PNG':
+        elif format_name == 'png':
             return image.info.get('compression', 'PNG')
-        elif format_name == 'GIF':
+        elif format_name == 'gif':
             return 'LZW'
-        elif format_name == 'WEBP':
+        elif format_name == 'webp':
             return 'WebP'
-        elif format_name == 'TIFF':
+        elif format_name == 'tiff':
             return image.info.get('compression', 'TIFF')
         
         return None
@@ -423,18 +407,16 @@ class PillowImageProcessingService(ImageProcessingService):
         if format_name in self._format_config:
             config = self._format_config[format_name]
             
-            # Adicionar informações de configuração
             for key, value in config.items():
                 if key.startswith('supports_'):
                     info[key] = value
         
-        # Informações específicas do PIL
         if hasattr(image, 'info'):
-            if format_name == 'PNG':
+            if format_name == 'png':
                 info['compression'] = image.info.get('compression', 'unknown')
-            elif format_name == 'JPEG':
+            elif format_name == 'jpeg':
                 info['quality'] = image.info.get('quality', 'unknown')
-            elif format_name in ('GIF', 'WEBP'):
+            elif format_name in ('gif', 'webp'):
                 info['loop_count'] = image.info.get('loop', 0)
         
         return info
@@ -497,8 +479,8 @@ class PillowImageProcessingService(ImageProcessingService):
         try:
             format_info = await self._detect_format(image_data, "")
             
-            if format_info['format'] == 'SVG':
-                return await self._generate_svg_thumbnail(image_data, size)
+            if format_info['format'] == 'svg':
+                return await self._generate_svg_thumbnail_placeholder(image_data, size)
             else:
                 return await asyncio.get_event_loop().run_in_executor(
                     None, self._generate_raster_thumbnail_sync, image_data, size
@@ -506,26 +488,22 @@ class PillowImageProcessingService(ImageProcessingService):
         except Exception as e:
             raise ValueError(f"Erro ao gerar thumbnail: {str(e)}")
     
-    async def _generate_svg_thumbnail(self, svg_data: bytes, size: Tuple[int, int]) -> bytes:
+    async def _generate_svg_thumbnail_placeholder(self, svg_data: bytes, size: Tuple[int, int]) -> bytes:
         """
-        Gera thumbnail de SVG convertendo para PNG.
+        Gera placeholder para thumbnail SVG.
         """
-        try:
-            # Para SVG, precisaríamos de uma biblioteca como cairosvg
-            # Por enquanto, retornar um placeholder ou erro
-            raise NotImplementedError(
-                "Geração de thumbnail para SVG requer biblioteca adicional (cairosvg). "
-                "Considere converter o SVG para PNG primeiro."
-            )
-        except Exception as e:
-            raise ValueError(f"Erro ao gerar thumbnail SVG: {str(e)}")
+        placeholder_image = Image.new('RGB', size, (240, 240, 240))
+        buffer = io.BytesIO()
+        placeholder_image.save(buffer, format='JPEG', quality=85, optimize=True)
+        buffer.seek(0)
+        return buffer.getvalue()
     
     def _generate_raster_thumbnail_sync(self, image_data: bytes, size: Tuple[int, int]) -> bytes:
         """
         Geração síncrona de thumbnail para formatos raster.
         """
         with Image.open(io.BytesIO(image_data)) as image:
-            # Converter para RGB se necessário (para compatibilidade com JPEG)
+            # Converter para RGB se necessário
             if image.mode in ('RGBA', 'LA', 'P'):
                 background = Image.new('RGB', image.size, (255, 255, 255))
                 if image.mode == 'P':
@@ -538,10 +516,8 @@ class PillowImageProcessingService(ImageProcessingService):
             elif image.mode != 'RGB':
                 image = image.convert('RGB')
             
-            # Gerar thumbnail mantendo proporção
             image.thumbnail(size, Image.Resampling.LANCZOS)
             
-            # Salvar em buffer
             buffer = io.BytesIO()
             image.save(buffer, format='JPEG', quality=85, optimize=True)
             buffer.seek(0)
