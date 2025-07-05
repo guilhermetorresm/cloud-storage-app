@@ -1,7 +1,29 @@
-import { Upload, Trash2, LogOut, Image, Video, FileText, Music, Folder } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+"use client";
+import React, { useState } from 'react'; // Importar useState aqui
+import {
+  Upload,
+  LogOut,
+  Image,
+  Video,
+  FileText,
+  Music,
+  Folder,
+} from "lucide-react";
+import { useNavigate } from "react-router-dom"; // Assumindo que você usa react-router-dom
+
+import { UploadModal } from './UploadModal'; // Importar o seu componente UploadModal
 
 export default function Sidebar() {
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+
+  const handleOpenUploadModal = () => {
+    setIsUploadModalOpen(true);
+  };
+
+  const handleCloseUploadModal = () => {
+    setIsUploadModalOpen(false);
+  };
+
   const navigate = useNavigate();
 
   const handleExit = () => {
@@ -14,9 +36,9 @@ export default function Sidebar() {
   const menuItems = [
     { icon: Folder, label: "Todos os arquivos" },
     { icon: Image, label: "Imagens" },
-    { icon: Video, label: "Vídeos"},
-    { icon: Music, label: "Áudios"},
-    { icon: FileText, label: "Documentos"}
+    { icon: Video, label: "Vídeos" },
+    { icon: Music, label: "Áudios" },
+    { icon: FileText, label: "Documentos" },
   ];
 
   return (
@@ -25,7 +47,8 @@ export default function Sidebar() {
       <div className="space-y-1 flex-1">
         {/* Upload como primeiro item, estilizado */}
         <button
-          className="w-full flex items-center justify-between px-2 py-2 rounded text-left bg-black hover:bg-gray-800"
+          className="w-full flex items-center justify-center px-2 py-2 rounded text-center bg-black hover:bg-gray-800 mb-4 mt-3"
+          onClick={handleOpenUploadModal} // Adiciona o onClick para abrir o modal
         >
           <div className="flex items-center space-x-2">
             <Upload className="w-5 h-5 text-white" />
@@ -60,6 +83,12 @@ export default function Sidebar() {
           <span>Sair</span>
         </button>
       </div>
+
+      {/* Renderiza o UploadModal */}
+      <UploadModal
+        isOpen={isUploadModalOpen}
+        onClose={handleCloseUploadModal}
+      />
     </aside>
   );
 }
