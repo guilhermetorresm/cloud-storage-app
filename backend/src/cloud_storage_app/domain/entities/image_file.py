@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional, List
 from .base_file import BaseFile
-from ..value_objects import Tag
+from ..value_objects import Tag, FilePath
 
 
 @dataclass
@@ -24,6 +24,8 @@ class ImageFile(BaseFile):
     _taken_at: Optional[str] = None  # Data/hora da foto em formato ISO
     _gps_latitude: Optional[float] = None
     _gps_longitude: Optional[float] = None
+
+    _thumbnail: Optional[FilePath] = None
     
     def __post_init__(self):
         """Validações específicas de imagem"""
@@ -195,9 +197,47 @@ class ImageFile(BaseFile):
             'taken_at': self._taken_at,
             'has_gps_data': self.has_gps_data,
             'gps_latitude': self._gps_latitude,
-            'gps_longitude': self._gps_longitude
+            'gps_longitude': self._gps_longitude,
+            'thumbnail': {
+                'has_thumbnail': self.has_thumbnail,
+                'path': str(self._thumbnail) if self._thumbnail else None
+            }
         }
     
     def is_valid_file_type(self) -> bool:
         """Verifica se o tipo de arquivo é válido para imagem"""
         return self._file_type.is_image
+    
+    # Métodos para gerenciamento de thumbnails
+    @property
+    def thumbnail(self) -> Optional[FilePath]:
+        """Retorna o caminho do thumbnail do vídeo"""
+        return self._thumbnail
+    
+    @property
+    def has_thumbnail(self) -> bool:
+        """Verifica se o vídeo tem thumbnail"""
+        return self._thumbnail is not None
+    
+    def set_thumbnail(self, thumbnail_path: str) -> None:
+        """Define o thumbnail do vídeo"""
+        self._thumbnail = FilePath(thumbnail_path)
+        self._mark_as_updated()
+    
+    def remove_thumbnail(self) -> None:
+        """Remove o thumbnail do vídeo"""
+        self._thumbnail = None
+        self._mark_as_updated()
+    
+    def generate_thumbnail_path(self) -> FilePath:
+        """Gera o caminho padrão para o thumbnail do vídeo"""
+        import uuid
+        from datetime import date
+        
+        return FilePath.create_thumbnail(
+            user_id=uuid.UUID(str(self._owner_id)),
+            file_id=str(self._file_id),
+            file_name=self._name.value,
+            file_type="images",
+            file_date=date.today()
+        )
