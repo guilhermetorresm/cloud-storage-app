@@ -26,7 +26,7 @@ class BaseFile(ABC):
     _path: FilePath
     _file_type: FileType
     
-    _tags: List[Tag]
+    _tags: List[Tag] = field(default_factory=list)
 
     # Metadados básicos
     _size: FileSize
