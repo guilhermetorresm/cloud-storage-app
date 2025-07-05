@@ -5,7 +5,7 @@ import asyncio
 from typing import Dict, Any, Tuple, Set, Optional
 from datetime import datetime
 from PIL import Image, ExifTags
-from PIL.ExifTags import TAGS
+from PIL.ExifTags import TAGS, GPS
 import io
 import os
 import mimetypes
@@ -18,14 +18,14 @@ from ...domain.services.image_processing_interface import ImageProcessingService
 class PillowImageProcessingService(ImageProcessingService):
     """
     Implementação do serviço de processamento de imagens usando Pillow (PIL).
-    Suporta: JPEG, PNG, GIF, SVG, WebP com extensibilidade para novos formatos.
+    Suporta: JPEG, PNG, GIF, SVG, WebP, BMP, TIFF com extensibilidade para novos formatos.
     """
     
     def __init__(self):
         # Formatos de imagem suportados organizados por tipo
         self._supported_formats = {
             # Formatos raster (bitmap)
-            'raster': {'JPEG', 'JPG', 'PNG', 'GIF', 'WEBP'},
+            'raster': {'JPEG', 'JPG', 'PNG', 'GIF', 'WEBP', 'BMP', 'TIFF'},
             # Formatos vetoriais
             'vector': {'SVG'},
             # Formatos especiais/futuros podem ser adicionados aqui
@@ -39,6 +39,8 @@ class PillowImageProcessingService(ImageProcessingService):
             'png': 'image/png',
             'gif': 'image/gif',
             'webp': 'image/webp',
+            'bmp': 'image/bmp',
+            'tiff': 'image/tiff',
             'svg': 'image/svg+xml'
         }
         
@@ -48,6 +50,8 @@ class PillowImageProcessingService(ImageProcessingService):
             'PNG': {'compression_range': (0, 9), 'supports_transparency': True},
             'GIF': {'supports_animation': True, 'supports_transparency': True},
             'WEBP': {'quality_range': (1, 100), 'supports_transparency': True, 'supports_animation': True},
+            'BMP': {'supports_transparency': False},
+            'TIFF': {'supports_transparency': True},
             'SVG': {'is_vector': True, 'supports_transparency': True}
         }
     
@@ -195,45 +199,38 @@ class PillowImageProcessingService(ImageProcessingService):
                     except (ValueError, IndexError):
                         pass
             
+            # Dados específicos para ImageFile
             metadata = {
-                # Propriedades do arquivo
-                'filename': filename,
-                'file_size': len(image_data),
-                'upload_date': datetime.utcnow().isoformat(),
-                'mime_type': 'image/svg+xml',
+                'width': int(numeric_width) if numeric_width else None,
+                'height': int(numeric_height) if numeric_height else None,
+                'color_depth': None,  # SVG não tem profundidade de cor
+                'dpi': None,  # SVG não tem DPI
+                'has_transparency': True,  # SVG sempre suporta transparência
+                'compression': None,  # SVG não usa compressão tradicional
+                'camera_make': None,  # SVG não tem dados EXIF
+                'camera_model': None,
+                'taken_at': None,
+                'gps_latitude': None,
+                'gps_longitude': None,
                 
-                # Propriedades da imagem
-                'dimensions': {
-                    'width': numeric_width or 'unknown',
-                    'height': numeric_height or 'unknown',
-                    'width_original': width,
-                    'height_original': height,
-                    'viewbox': viewbox
-                },
-                'color_depth': 'vector',
-                'color_mode': 'vector',
+                # Metadados gerais
                 'format': 'SVG',
-                'resolution': {'dpi_x': 'vector', 'dpi_y': 'vector'},
+                'mime_type': 'image/svg+xml',
+                'file_size': len(image_data),
+                'is_vector': True,
+                'is_animated': bool(list(root.iter('{http://www.w3.org/2000/svg}animate')) or 
+                                  list(root.iter('{http://www.w3.org/2000/svg}animateTransform'))),
                 
-                # Dados específicos do SVG
+                # Informações específicas do SVG
                 'svg_info': {
                     'namespace': root.tag if '}' in root.tag else None,
                     'elements_count': len(list(root.iter())),
                     'has_text': bool(list(root.iter('{http://www.w3.org/2000/svg}text'))),
                     'has_images': bool(list(root.iter('{http://www.w3.org/2000/svg}image'))),
-                    'has_animations': bool(list(root.iter('{http://www.w3.org/2000/svg}animate')) or 
-                                          list(root.iter('{http://www.w3.org/2000/svg}animateTransform')))
-                },
-                
-                # Dados EXIF (não aplicável para SVG)
-                'exif': {},
-                
-                # Informações adicionais
-                'has_transparency': True,  # SVG sempre suporta transparência
-                'is_animated': bool(list(root.iter('{http://www.w3.org/2000/svg}animate')) or 
-                                  list(root.iter('{http://www.w3.org/2000/svg}animateTransform'))),
-                'frame_count': 1,
-                'is_vector': True
+                    'viewbox': viewbox,
+                    'width_original': width,
+                    'height_original': height
+                }
             }
             
             return metadata
@@ -262,11 +259,7 @@ class PillowImageProcessingService(ImageProcessingService):
         Extração síncrona de metadados para formatos raster.
         """
         with Image.open(io.BytesIO(image_data)) as image:
-            # Metadados básicos do arquivo
-            file_size = len(image_data)
-            mime_type = format_info['mime_type']
-            
-            # Propriedades da imagem
+            # Propriedades básicas da imagem
             width, height = image.size
             mode = image.mode
             format_name = image.format
@@ -276,48 +269,140 @@ class PillowImageProcessingService(ImageProcessingService):
             
             # Obter informações de DPI se disponível
             dpi = image.info.get('dpi', (72, 72))
+            dpi_value = dpi[0] if isinstance(dpi, tuple) else dpi
             
             # Extrair dados EXIF
             exif_data = self._extract_exif_sync(image)
             
             # Verificar se é animado (para GIF e WebP)
             is_animated = getattr(image, 'is_animated', False)
-            frame_count = getattr(image, 'n_frames', 1)
             
+            # Extrair informações específicas dos dados EXIF
+            camera_make = exif_data.get('Make')
+            camera_model = exif_data.get('Model')
+            taken_at = self._extract_datetime_from_exif(exif_data)
+            gps_lat, gps_lon = self._extract_gps_from_exif(exif_data)
+            
+            # Determinar compressão
+            compression = self._determine_compression(image, format_name)
+            
+            # Metadados específicos para ImageFile
             metadata = {
-                # Propriedades do arquivo
-                'filename': filename,
-                'file_size': file_size,
-                'upload_date': datetime.utcnow().isoformat(),
-                'mime_type': mime_type,
-                
-                # Propriedades da imagem
-                'dimensions': {
-                    'width': width,
-                    'height': height
-                },
+                'width': width,
+                'height': height,
                 'color_depth': color_depth,
-                'color_mode': mode,
-                'format': format_name,
-                'resolution': {
-                    'dpi_x': dpi[0] if isinstance(dpi, tuple) else dpi,
-                    'dpi_y': dpi[1] if isinstance(dpi, tuple) else dpi
-                },
-                
-                # Dados EXIF
-                'exif': exif_data,
-                
-                # Informações adicionais
+                'dpi': dpi_value,
                 'has_transparency': self._has_transparency(image),
-                'is_animated': is_animated,
-                'frame_count': frame_count,
+                'compression': compression,
+                'camera_make': camera_make,
+                'camera_model': camera_model,
+                'taken_at': taken_at,
+                'gps_latitude': gps_lat,
+                'gps_longitude': gps_lon,
+                
+                # Metadados gerais
+                'format': format_name,
+                'mime_type': format_info['mime_type'],
+                'file_size': len(image_data),
                 'is_vector': False,
+                'is_animated': is_animated,
+                'color_mode': mode,
+                
+                # Dados EXIF completos
+                'exif_data': exif_data,
                 
                 # Informações específicas do formato
                 'format_info': self._get_format_specific_info(format_name, image)
             }
             
             return metadata
+    
+    def _extract_datetime_from_exif(self, exif_data: Dict[str, Any]) -> Optional[str]:
+        """
+        Extrai data/hora da foto dos dados EXIF.
+        """
+        # Campos EXIF que podem conter data/hora
+        datetime_fields = ['DateTime', 'DateTimeOriginal', 'DateTimeDigitized']
+        
+        for field in datetime_fields:
+            if field in exif_data:
+                try:
+                    # Converter para formato ISO se necessário
+                    datetime_str = str(exif_data[field])
+                    # EXIF usa formato "YYYY:MM:DD HH:MM:SS"
+                    if ':' in datetime_str and len(datetime_str) >= 19:
+                        # Converter para ISO format
+                        iso_str = datetime_str.replace(':', '-', 2)
+                        return iso_str
+                    return datetime_str
+                except:
+                    continue
+        
+        return None
+    
+    def _extract_gps_from_exif(self, exif_data: Dict[str, Any]) -> Tuple[Optional[float], Optional[float]]:
+        """
+        Extrai coordenadas GPS dos dados EXIF.
+        """
+        try:
+            # Verificar se há dados GPS
+            if 'GPS' in exif_data or 'GPSInfo' in exif_data:
+                gps_info = exif_data.get('GPS') or exif_data.get('GPSInfo')
+                
+                if gps_info:
+                    lat = self._convert_gps_coordinate(gps_info.get('GPSLatitude'), 
+                                                     gps_info.get('GPSLatitudeRef'))
+                    lon = self._convert_gps_coordinate(gps_info.get('GPSLongitude'), 
+                                                     gps_info.get('GPSLongitudeRef'))
+                    
+                    return lat, lon
+        except:
+            pass
+        
+        return None, None
+    
+    def _convert_gps_coordinate(self, coordinate, ref) -> Optional[float]:
+        """
+        Converte coordenada GPS do formato EXIF para decimal.
+        """
+        if not coordinate or not ref:
+            return None
+        
+        try:
+            # Coordinate é uma tupla de frações (degrees, minutes, seconds)
+            if isinstance(coordinate, (list, tuple)) and len(coordinate) >= 3:
+                degrees = float(coordinate[0])
+                minutes = float(coordinate[1])
+                seconds = float(coordinate[2])
+                
+                decimal = degrees + minutes/60 + seconds/3600
+                
+                # Aplicar referência (N/S para latitude, E/W para longitude)
+                if ref in ['S', 'W']:
+                    decimal = -decimal
+                
+                return decimal
+        except:
+            pass
+        
+        return None
+    
+    def _determine_compression(self, image: Image.Image, format_name: str) -> Optional[str]:
+        """
+        Determina o tipo de compressão da imagem.
+        """
+        if format_name == 'JPEG':
+            return 'JPEG'
+        elif format_name == 'PNG':
+            return image.info.get('compression', 'PNG')
+        elif format_name == 'GIF':
+            return 'LZW'
+        elif format_name == 'WEBP':
+            return 'WebP'
+        elif format_name == 'TIFF':
+            return image.info.get('compression', 'TIFF')
+        
+        return None
     
     def _has_transparency(self, image: Image.Image) -> bool:
         """
@@ -391,7 +476,11 @@ class PillowImageProcessingService(ImageProcessingService):
                         except UnicodeDecodeError:
                             value = str(value)
                     elif isinstance(value, tuple):
-                        value = list(value)
+                        # Manter tuplas para coordenadas GPS
+                        if tag in ['GPSLatitude', 'GPSLongitude']:
+                            value = value
+                        else:
+                            value = list(value)
                     
                     exif_data[tag] = value
                     
