@@ -386,7 +386,9 @@ class FFmpegVideoProcessingService(VideoProcessingService):
         video_data: bytes,
         original_metadata: Dict[str, Any],
         target_qualities: List[str],
-        output_dir: str
+        user_id: uuid.UUID,
+        file_id: str,
+        file_date: Optional[date] = None
     ) -> Dict[str, VideoVersion]:
         """
         Processa o vídeo em diferentes qualidades.
@@ -395,7 +397,9 @@ class FFmpegVideoProcessingService(VideoProcessingService):
             video_data: Dados binários do vídeo original
             original_metadata: Metadados do vídeo original
             target_qualities: Lista de qualidades desejadas (ex: ['1080p', '720p', '480p'])
-            output_dir: Diretório para salvar as versões processadas
+            user_id: ID do usuário proprietário do vídeo
+            file_id: ID único do arquivo de vídeo
+            file_date: Data para uso no caminho (padrão: data atual)
             
         Returns:
             Dict com as versões processadas
@@ -405,14 +409,20 @@ class FFmpegVideoProcessingService(VideoProcessingService):
         
         versions = {}
         original_height = original_metadata.get('height', 0)
-        
-        # Criar versão original
-        original_resolution = f"{original_metadata.get('width', 0)}x{original_metadata.get('height', 0)}"
         original_quality = self._height_to_quality(original_height)
+        
+        # Criar versão original usando factory method correto
+        original_path = FilePath.create_video(
+            user_id=user_id,
+            file_id=file_id,
+            resolution='original',
+            file_name='original.mp4',
+            file_date=file_date
+        )
         
         versions['original'] = VideoVersion(
             resolution=original_quality,
-            file_path=FilePath(f"{output_dir}/original.mp4"),
+            file_path=original_path,
             is_original=True,
             processing_status="completed"
         )
@@ -430,14 +440,24 @@ class FFmpegVideoProcessingService(VideoProcessingService):
                 version = await self._process_single_quality(
                     video_data=video_data,
                     quality=quality,
-                    output_dir=output_dir
+                    user_id=user_id,
+                    file_id=file_id,
+                    file_date=file_date
                 )
                 versions[quality] = version
             except Exception as e:
-                # Criar versão com status de erro
+                # Criar versão com status de erro usando FilePath correto
+                error_path = FilePath.create_video(
+                    user_id=user_id,
+                    file_id=file_id,
+                    resolution=quality,
+                    file_name=f'{quality}_failed.mp4',
+                    file_date=file_date
+                )
+                
                 versions[quality] = VideoVersion(
                     resolution=quality,
-                    file_path=FilePath(f"{output_dir}/{quality}_failed.mp4"),
+                    file_path=error_path,
                     is_original=False,
                     processing_status="failed"
                 )
@@ -448,32 +468,51 @@ class FFmpegVideoProcessingService(VideoProcessingService):
         self,
         video_data: bytes,
         quality: str,
-        output_dir: str
+        user_id: uuid.UUID,
+        file_id: str,
+        file_date: Optional[date] = None
     ) -> VideoVersion:
         """
         Processa uma única versão de qualidade.
+        
+        Args:
+            video_data: Dados binários do vídeo
+            quality: Qualidade desejada (ex: '1080p')
+            user_id: ID do usuário
+            file_id: ID do arquivo
+            file_date: Data para uso no caminho
+            
+        Returns:
+            VideoVersion processada
         """
         if quality not in self.quality_profiles:
             raise ValueError(f"Qualidade {quality} não suportada")
         
         profile = self.quality_profiles[quality]
         
+        # Criar FilePath usando factory method
+        file_path = FilePath.create_video(
+            user_id=user_id,
+            file_id=file_id,
+            resolution=quality,
+            file_name=f'{quality}.mp4',
+            file_date=file_date
+        )
+        
+        # Para processamento, usar caminho local temporário
+        temp_output_dir = f"/tmp/video_processing/{user_id}/{file_id}"
+        os.makedirs(temp_output_dir, exist_ok=True)
+        temp_output_path = os.path.join(temp_output_dir, f"{quality}.mp4")
+        
         # Criar arquivo temporário de entrada
         with tempfile.NamedTemporaryFile(suffix='.tmp', delete=False) as input_file:
             input_file.write(video_data)
             input_path = input_file.name
         
-        # Definir caminho de saída
-        output_filename = f"{quality}_processed.mp4"
-        output_path = os.path.join(output_dir, output_filename)
-        
-        # Criar diretório se não existir
-        os.makedirs(output_dir, exist_ok=True)
-        
         # Criar versão inicial com status "processing"
         version = VideoVersion(
             resolution=quality,
-            file_path=FilePath(output_path),
+            file_path=file_path,
             is_original=False,
             processing_status="processing"
         )
@@ -492,7 +531,7 @@ class FFmpegVideoProcessingService(VideoProcessingService):
                 '-b:a', profile['audio_bitrate'],
                 '-movflags', '+faststart',
                 '-y',  # Sobrescrever arquivo existente
-                output_path
+                temp_output_path
             ]
             
             # Executar FFmpeg
@@ -507,10 +546,14 @@ class FFmpegVideoProcessingService(VideoProcessingService):
             if process.returncode != 0:
                 raise ValueError(f"FFmpeg falhou: {stderr.decode()}")
             
+            # Verificar se o arquivo foi criado
+            if not os.path.exists(temp_output_path):
+                raise ValueError("Arquivo processado não foi criado")
+            
             # Criar versão com status de sucesso
             return VideoVersion(
                 resolution=quality,
-                file_path=FilePath(output_path),
+                file_path=file_path,
                 is_original=False,
                 processing_status="completed"
             )
@@ -519,7 +562,7 @@ class FFmpegVideoProcessingService(VideoProcessingService):
             # Retornar versão com status de erro
             return VideoVersion(
                 resolution=quality,
-                file_path=FilePath(output_path),
+                file_path=file_path,
                 is_original=False,
                 processing_status="failed"
             )
@@ -571,11 +614,25 @@ class FFmpegVideoProcessingService(VideoProcessingService):
         video_data: bytes,
         original_metadata: Dict[str, Any],
         target_qualities: List[str],
-        output_dir: str,
+        user_id: uuid.UUID,
+        file_id: str,
+        file_date: Optional[date] = None,
         progress_callback: Optional[callable] = None
     ) -> Dict[str, VideoVersion]:
         """
         Cria versões de vídeo de forma assíncrona com callback de progresso.
+        
+        Args:
+            video_data: Dados binários do vídeo original
+            original_metadata: Metadados do vídeo original
+            target_qualities: Lista de qualidades desejadas
+            user_id: ID do usuário proprietário do vídeo
+            file_id: ID único do arquivo de vídeo
+            file_date: Data para uso no caminho
+            progress_callback: Callback para acompanhar progresso
+            
+        Returns:
+            Dict com as versões processadas
         """
         versions = {}
         total_qualities = len(target_qualities)
@@ -584,9 +641,17 @@ class FFmpegVideoProcessingService(VideoProcessingService):
         original_height = original_metadata.get('height', 0)
         original_quality = self._height_to_quality(original_height)
         
+        original_path = FilePath.create_video(
+            user_id=user_id,
+            file_id=file_id,
+            resolution='original',
+            file_name='original.mp4',
+            file_date=file_date
+        )
+        
         versions['original'] = VideoVersion(
             resolution=original_quality,
-            file_path=FilePath(f"{output_dir}/original.mp4"),
+            file_path=original_path,
             is_original=True,
             processing_status="completed"
         )
@@ -604,10 +669,18 @@ class FFmpegVideoProcessingService(VideoProcessingService):
                 progress_callback(quality, i + 1, total_qualities, "processing")
             
             try:
-                # Criar versão inicial
+                # Criar versão inicial com status "processing"
+                processing_path = FilePath.create_video(
+                    user_id=user_id,
+                    file_id=file_id,
+                    resolution=quality,
+                    file_name=f'{quality}_processing.mp4',
+                    file_date=file_date
+                )
+                
                 version = VideoVersion(
                     resolution=quality,
-                    file_path=FilePath(f"{output_dir}/{quality}_processing.mp4"),
+                    file_path=processing_path,
                     is_original=False,
                     processing_status="processing"
                 )
@@ -617,7 +690,9 @@ class FFmpegVideoProcessingService(VideoProcessingService):
                 processed_version = await self._process_single_quality(
                     video_data=video_data,
                     quality=quality,
-                    output_dir=output_dir
+                    user_id=user_id,
+                    file_id=file_id,
+                    file_date=file_date
                 )
                 versions[quality] = processed_version
                 
@@ -626,10 +701,18 @@ class FFmpegVideoProcessingService(VideoProcessingService):
                     progress_callback(quality, i + 1, total_qualities, "completed")
                 
             except Exception as e:
-                # Criar versão com erro
+                # Criar versão com erro usando FilePath correto
+                error_path = FilePath.create_video(
+                    user_id=user_id,
+                    file_id=file_id,
+                    resolution=quality,
+                    file_name=f'{quality}_failed.mp4',
+                    file_date=file_date
+                )
+                
                 versions[quality] = VideoVersion(
                     resolution=quality,
-                    file_path=FilePath(f"{output_dir}/{quality}_failed.mp4"),
+                    file_path=error_path,
                     is_original=False,
                     processing_status="failed"
                 )
@@ -643,22 +726,37 @@ class FFmpegVideoProcessingService(VideoProcessingService):
     async def create_video_preview(
         self,
         video_data: bytes,
+        user_id: uuid.UUID,
+        file_id: str,
         duration_seconds: int = 30,
-        start_time: float = 0.0
-    ) -> bytes:
+        start_time: float = 0.0,
+        file_date: Optional[date] = None
+    ) -> tuple[bytes, FilePath]:
         """
         Cria um preview/trailer do vídeo com duração específica.
         
         Args:
             video_data: Dados binários do vídeo
+            user_id: ID do usuário
+            file_id: ID do arquivo
             duration_seconds: Duração do preview em segundos
             start_time: Tempo de início do preview
+            file_date: Data para uso no caminho
             
         Returns:
-            bytes: Dados do preview em formato MP4
+            Tuple com (dados do preview, FilePath do preview)
         """
         if not await self.is_ffmpeg_available():
             raise RuntimeError("FFmpeg não está disponível")
+        
+        # Criar FilePath para o preview
+        preview_path = FilePath.create_video(
+            user_id=user_id,
+            file_id=file_id,
+            resolution='preview',
+            file_name=f'preview_{duration_seconds}s.mp4',
+            file_date=file_date
+        )
         
         # Criar arquivo temporário de entrada
         with tempfile.NamedTemporaryFile(suffix='.tmp', delete=False) as input_file:
@@ -667,7 +765,7 @@ class FFmpegVideoProcessingService(VideoProcessingService):
         
         # Criar arquivo temporário de saída
         with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as output_file:
-            output_path = output_file.name
+            temp_output_path = output_file.name
         
         try:
             # Comando FFmpeg para criar preview
@@ -683,7 +781,7 @@ class FFmpegVideoProcessingService(VideoProcessingService):
                 '-b:a', '96k',
                 '-movflags', '+faststart',
                 '-y',
-                output_path
+                temp_output_path
             ]
             
             # Executar FFmpeg
@@ -699,16 +797,16 @@ class FFmpegVideoProcessingService(VideoProcessingService):
                 raise ValueError(f"FFmpeg falhou: {stderr.decode()}")
             
             # Ler arquivo de saída
-            with open(output_path, 'rb') as f:
+            with open(temp_output_path, 'rb') as f:
                 preview_data = f.read()
             
-            return preview_data
+            return preview_data, preview_path
             
         finally:
             # Limpar arquivos temporários
             try:
                 os.unlink(input_path)
-                os.unlink(output_path)
+                os.unlink(temp_output_path)
             except:
                 pass
     
