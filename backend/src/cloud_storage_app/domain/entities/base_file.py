@@ -22,14 +22,13 @@ class BaseFile(ABC):
     _file_id: FileId
     _owner_id: UserId
     _name: FileName
-    _description: FileDescription
     _path: FilePath
     _file_type: FileType
-    
-    _tags: List[Tag] = field(default_factory=list)
-
-    # Metadados básicos
     _size: FileSize
+    
+    # Campos opcionais
+    _description: Optional[FileDescription] = None
+    _tags: List[Tag] = field(default_factory=list)
     
     # Controle de estado
     _is_deleted: bool = False
@@ -115,6 +114,36 @@ class BaseFile(ABC):
     @property
     def file_type(self) -> FileType:
         return self._file_type
+    
+    @property
+    def mime_type(self) -> str:
+        """Retorna o tipo MIME do arquivo."""
+        return self._file_type.mime_type
+    
+    @property
+    def extension(self) -> str:
+        """Retorna a extensão do arquivo."""
+        return self._file_type.extension
+    
+    @property
+    def category(self) -> str:
+        """Retorna a categoria do arquivo."""
+        return self._file_type.category
+    
+    @property
+    def is_audio(self) -> bool:
+        """Verifica se é um arquivo de áudio."""
+        return self._file_type.is_audio()
+    
+    @property
+    def is_image(self) -> bool:
+        """Verifica se é um arquivo de imagem."""
+        return self._file_type.is_image()
+    
+    @property
+    def is_video(self) -> bool:
+        """Verifica se é um arquivo de vídeo."""
+        return self._file_type.is_video()
     
     @property
     def size(self) -> FileSize:
