@@ -1,8 +1,12 @@
 """
 Implementação concreta do serviço unificado de geração de miniaturas.
 ATUALIZADO: Gera thumbnails apenas no formato JPEG padronizado.
+ADICIONADO: Suporte para geração de thumbnails de vídeo extraindo o primeiro frame.
 """
 import asyncio
+import subprocess
+import tempfile
+import os
 from typing import Tuple, Optional, Set, Dict, Any
 from PIL import Image, ImageOps
 import io
@@ -21,6 +25,7 @@ class PillowThumbnailGeneratorService(ThumbnailGeneratorService):
     """
     Implementação do serviço unificado de geração de miniaturas usando Pillow.
     PADRONIZADO: Gera thumbnails apenas no formato JPEG para consistência.
+    ADICIONADO: Suporte para vídeos usando FFmpeg para extrair frames.
     """
     
     # Formato padrão para todos os thumbnails
@@ -33,8 +38,9 @@ class PillowThumbnailGeneratorService(ThumbnailGeneratorService):
             'future': []
         }
         
+        # Formatos de vídeo suportados conforme especificação
         self.supported_video_formats = [
-            'mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', 'mkv'
+            'mp4', 'avi', 'mov', 'webm'
         ]
         
         # Configurações de qualidade específicas para JPEG
@@ -73,6 +79,11 @@ class PillowThumbnailGeneratorService(ThumbnailGeneratorService):
         format_lower = format_name.lower()
         return format_lower in self.supported_image_formats
     
+    async def is_video_format_supported(self, format_name: str) -> bool:
+        """Verifica se um formato de vídeo é suportado."""
+        format_lower = format_name.lower()
+        return format_lower in self.supported_video_formats
+    
     async def is_vector_format(self, format_name: str) -> bool:
         """Verifica se um formato é vetorial."""
         return format_name.lower() in self._supported_formats['vector']
@@ -100,6 +111,23 @@ class PillowThumbnailGeneratorService(ThumbnailGeneratorService):
             text = data.decode('utf-8', errors='ignore')
             return '<svg' in text.lower() or ('<?xml' in text.lower() and '<svg' in text.lower())
         except:
+            return False
+    
+    async def _check_ffmpeg_availability(self) -> bool:
+        """
+        Verifica se o FFmpeg está disponível no sistema.
+        """
+        try:
+            result = await asyncio.create_subprocess_exec(
+                'ffmpeg', '-version',
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            await result.wait()
+            return result.returncode == 0
+        except FileNotFoundError:
+            return False
+        except Exception:
             return False
     
     async def generate_image_thumbnail(
@@ -234,16 +262,195 @@ class PillowThumbnailGeneratorService(ThumbnailGeneratorService):
         quality: ThumbnailQuality = ThumbnailQuality.MEDIUM
     ) -> bytes:
         """
-        Gera uma miniatura a partir de dados de vídeo.
+        Gera uma miniatura a partir de dados de vídeo extraindo o primeiro frame.
         PADRONIZADO: Sempre gera no formato JPEG.
         
-        NOTA: Esta implementação será adicionada futuramente quando
-        integrarmos com bibliotecas de processamento de vídeo como FFmpeg.
+        Args:
+            video_data: Dados binários do vídeo
+            timestamp: Timestamp do frame a ser extraído (padrão: 0.0 para primeiro frame)
+            size: Tamanho da miniatura (largura, altura)
+            format: Formato da miniatura (ignorado - sempre JPEG)
+            quality: Qualidade da miniatura
+        
+        Returns:
+            bytes: Dados da miniatura em formato JPEG
         """
-        raise NotImplementedError(
-            "Geração de thumbnails de vídeo ainda não implementada. "
-            "Esta funcionalidade será adicionada em uma versão futura."
-        )
+        # Verificar se FFmpeg está disponível
+        if not await self._check_ffmpeg_availability():
+            return await self._generate_video_placeholder(size, quality)
+        
+        try:
+            return await self._extract_video_frame(video_data, timestamp, size, quality)
+        except Exception as e:
+            # Em caso de erro, gerar placeholder
+            return await self._generate_video_placeholder(size, quality, str(e))
+    
+    async def _extract_video_frame(
+        self, 
+        video_data: bytes, 
+        timestamp: float, 
+        size: Tuple[int, int],
+        quality: ThumbnailQuality
+    ) -> bytes:
+        """
+        Extrai um frame específico do vídeo usando FFmpeg.
+        """
+        # Criar arquivo temporário para o vídeo
+        with tempfile.NamedTemporaryFile(suffix='.tmp', delete=False) as video_temp:
+            video_temp.write(video_data)
+            video_temp_path = video_temp.name
+        
+        # Criar arquivo temporário para a imagem de saída
+        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as image_temp:
+            image_temp_path = image_temp.name
+        
+        try:
+            # Comando FFmpeg para extrair frame
+            cmd = [
+                'ffmpeg',
+                '-i', video_temp_path,
+                '-ss', str(timestamp),  # Timestamp do frame
+                '-vframes', '1',  # Extrair apenas 1 frame
+                '-vf', f'scale={size[0]}:{size[1]}:force_original_aspect_ratio=decrease,pad={size[0]}:{size[1]}:(ow-iw)/2:(oh-ih)/2:color=white',
+                '-q:v', str(self._get_ffmpeg_quality(quality)),
+                '-y',  # Sobrescrever arquivo de saída
+                image_temp_path
+            ]
+            
+            # Executar FFmpeg
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            
+            stdout, stderr = await process.communicate()
+            
+            if process.returncode != 0:
+                raise ValueError(f"FFmpeg falhou: {stderr.decode()}")
+            
+            # Ler a imagem gerada
+            with open(image_temp_path, 'rb') as f:
+                frame_data = f.read()
+            
+            # Processar a imagem com PIL para garantir qualidade e formato
+            return await asyncio.get_event_loop().run_in_executor(
+                None, self._process_extracted_frame, frame_data, size, quality
+            )
+            
+        finally:
+            # Limpar arquivos temporários
+            try:
+                os.unlink(video_temp_path)
+                os.unlink(image_temp_path)
+            except:
+                pass
+    
+    def _process_extracted_frame(
+        self, 
+        frame_data: bytes, 
+        size: Tuple[int, int],
+        quality: ThumbnailQuality
+    ) -> bytes:
+        """
+        Processa o frame extraído para garantir qualidade e formato JPEG.
+        """
+        try:
+            with Image.open(io.BytesIO(frame_data)) as image:
+                # Converter para RGB se necessário
+                processed_image = self._convert_to_rgb_with_background(image)
+                
+                # Garantir que está no tamanho correto
+                if processed_image.size != size:
+                    processed_image = ImageOps.fit(processed_image, size, Image.Resampling.LANCZOS)
+                
+                # Salvar como JPEG com qualidade especificada
+                buffer = io.BytesIO()
+                processed_image.save(
+                    buffer,
+                    format='JPEG',
+                    quality=self._quality_settings[quality],
+                    optimize=True,
+                    progressive=True
+                )
+                buffer.seek(0)
+                
+                return buffer.getvalue()
+                
+        except Exception as e:
+            raise ValueError(f"Erro ao processar frame extraído: {str(e)}")
+    
+    def _get_ffmpeg_quality(self, quality: ThumbnailQuality) -> int:
+        """
+        Converte qualidade para escala do FFmpeg (1-31, onde 1 é melhor).
+        """
+        quality_map = {
+            ThumbnailQuality.LOW: 15,
+            ThumbnailQuality.MEDIUM: 8,
+            ThumbnailQuality.HIGH: 4,
+            ThumbnailQuality.MAXIMUM: 2
+        }
+        return quality_map.get(quality, 8)
+    
+    async def _generate_video_placeholder(
+        self, 
+        size: Tuple[int, int],
+        quality: ThumbnailQuality,
+        error_msg: Optional[str] = None
+    ) -> bytes:
+        """
+        Gera um placeholder para vídeo quando não é possível extrair frame.
+        """
+        try:
+            # Criar imagem placeholder
+            placeholder_image = Image.new('RGB', size, (60, 60, 60))
+            
+            try:
+                from PIL import ImageDraw
+                draw = ImageDraw.Draw(placeholder_image)
+                
+                # Desenhar ícone de play simples
+                center_x, center_y = size[0] // 2, size[1] // 2
+                triangle_size = min(size) // 4
+                
+                # Triângulo de play
+                points = [
+                    (center_x - triangle_size//2, center_y - triangle_size//2),
+                    (center_x - triangle_size//2, center_y + triangle_size//2),
+                    (center_x + triangle_size//2, center_y)
+                ]
+                draw.polygon(points, fill=(255, 255, 255))
+                
+                # Texto indicativo
+                text = "VÍDEO"
+                bbox = draw.textbbox((0, 0), text)
+                text_width = bbox[2] - bbox[0]
+                text_height = bbox[3] - bbox[1]
+                
+                x = (size[0] - text_width) // 2
+                y = center_y + triangle_size + 10
+                
+                if y + text_height < size[1]:
+                    draw.text((x, y), text, fill=(200, 200, 200))
+                
+            except ImportError:
+                pass
+            
+            # Salvar como JPEG
+            buffer = io.BytesIO()
+            placeholder_image.save(
+                buffer,
+                format='JPEG',
+                quality=self._quality_settings[quality],
+                optimize=True,
+                progressive=True
+            )
+            buffer.seek(0)
+            
+            return buffer.getvalue()
+            
+        except Exception as e:
+            raise ValueError(f"Erro ao gerar placeholder de vídeo: {str(e)}")
     
     async def resize_image(
         self, 
