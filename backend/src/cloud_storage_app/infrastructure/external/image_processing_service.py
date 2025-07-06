@@ -13,6 +13,7 @@ import xml.etree.ElementTree as ET
 import re
 
 from ...domain.services.image_processing_interface import ImageProcessingService
+from ...domain.services.thumbnail_generator_interface import ThumbnailGeneratorService, ThumbnailQuality
 
 
 class PillowImageProcessingService(ImageProcessingService):
@@ -21,7 +22,15 @@ class PillowImageProcessingService(ImageProcessingService):
     Suporta: JPEG, PNG, GIF, SVG, WebP, BMP, TIFF com extensibilidade para novos formatos.
     """
     
-    def __init__(self):
+    def __init__(self, thumbnail_generator: ThumbnailGeneratorService):
+        """
+        Inicializa o serviço com o gerador de thumbnails.
+        
+        Args:
+            thumbnail_generator: Serviço de geração de thumbnails
+        """
+        self._thumbnail_generator = thumbnail_generator
+        
         # Formatos de imagem suportados organizados por tipo
         self._supported_formats = {
             # Formatos raster (bitmap)
@@ -431,55 +440,17 @@ class PillowImageProcessingService(ImageProcessingService):
     
     async def generate_thumbnail(self, image_data: bytes, size: Tuple[int, int] = (200, 150)) -> bytes:
         """
-        Gera uma miniatura da imagem.
+        Gera uma miniatura da imagem usando o serviço de thumbnail dedicado.
         """
         try:
-            format_info = await self._detect_format(image_data, "")
-            
-            if format_info['format'] == 'svg':
-                return await self._generate_svg_thumbnail_placeholder(image_data, size)
-            else:
-                return await asyncio.get_event_loop().run_in_executor(
-                    None, self._generate_raster_thumbnail_sync, image_data, size
-                )
+            # Usar o serviço de thumbnail dedicado com qualidade média
+            return await self._thumbnail_generator.generate_image_thumbnail(
+                image_data=image_data,
+                size=size,
+                quality=ThumbnailQuality.MEDIUM
+            )
         except Exception as e:
             raise ValueError(f"Erro ao gerar thumbnail: {str(e)}")
-    
-    async def _generate_svg_thumbnail_placeholder(self, svg_data: bytes, size: Tuple[int, int]) -> bytes:
-        """
-        Gera placeholder para thumbnail SVG.
-        """
-        placeholder_image = Image.new('RGB', size, (240, 240, 240))
-        buffer = io.BytesIO()
-        placeholder_image.save(buffer, format='JPEG', quality=85, optimize=True)
-        buffer.seek(0)
-        return buffer.getvalue()
-    
-    def _generate_raster_thumbnail_sync(self, image_data: bytes, size: Tuple[int, int]) -> bytes:
-        """
-        Geração síncrona de thumbnail para formatos raster.
-        """
-        with Image.open(io.BytesIO(image_data)) as image:
-            # Converter para RGB se necessário
-            if image.mode in ('RGBA', 'LA', 'P'):
-                background = Image.new('RGB', image.size, (255, 255, 255))
-                if image.mode == 'P':
-                    image = image.convert('RGBA')
-                if image.mode in ('RGBA', 'LA'):
-                    background.paste(image, mask=image.split()[-1])
-                else:
-                    background.paste(image)
-                image = background
-            elif image.mode != 'RGB':
-                image = image.convert('RGB')
-            
-            image.thumbnail(size, Image.Resampling.LANCZOS)
-            
-            buffer = io.BytesIO()
-            image.save(buffer, format='JPEG', quality=85, optimize=True)
-            buffer.seek(0)
-            
-            return buffer.getvalue()
     
     async def validate_image_integrity(self, image_data: bytes) -> bool:
         """
