@@ -1,4 +1,4 @@
-"""criacao_tabela_file_image
+"""criacao_tabela_file_audio
 
 Revision ID: efc69596882d
 Revises: e2f7be992db5
