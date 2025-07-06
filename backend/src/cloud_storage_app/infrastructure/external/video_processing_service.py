@@ -406,6 +406,17 @@ class FFmpegVideoProcessingService(VideoProcessingService):
         versions = {}
         original_height = original_metadata.get('height', 0)
         
+        # Criar versão original
+        original_resolution = f"{original_metadata.get('width', 0)}x{original_metadata.get('height', 0)}"
+        original_quality = self._height_to_quality(original_height)
+        
+        versions['original'] = VideoVersion(
+            resolution=original_quality,
+            file_path=FilePath(f"{output_dir}/original.mp4"),
+            is_original=True,
+            processing_status="completed"
+        )
+        
         # Filtrar qualidades que não são maiores que o original
         valid_qualities = []
         for quality in target_qualities:
@@ -428,8 +439,7 @@ class FFmpegVideoProcessingService(VideoProcessingService):
                     resolution=quality,
                     file_path=FilePath(f"{output_dir}/{quality}_failed.mp4"),
                     is_original=False,
-                    processing_status="failed",
-                    error_message=str(e)
+                    processing_status="failed"
                 )
         
         return versions
@@ -456,6 +466,17 @@ class FFmpegVideoProcessingService(VideoProcessingService):
         # Definir caminho de saída
         output_filename = f"{quality}_processed.mp4"
         output_path = os.path.join(output_dir, output_filename)
+        
+        # Criar diretório se não existir
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Criar versão inicial com status "processing"
+        version = VideoVersion(
+            resolution=quality,
+            file_path=FilePath(output_path),
+            is_original=False,
+            processing_status="processing"
+        )
         
         try:
             # Comando FFmpeg para transcodificação
@@ -494,6 +515,15 @@ class FFmpegVideoProcessingService(VideoProcessingService):
                 processing_status="completed"
             )
             
+        except Exception as e:
+            # Retornar versão com status de erro
+            return VideoVersion(
+                resolution=quality,
+                file_path=FilePath(output_path),
+                is_original=False,
+                processing_status="failed"
+            )
+            
         finally:
             # Limpar arquivo temporário de entrada
             try:
@@ -507,13 +537,108 @@ class FFmpegVideoProcessingService(VideoProcessingService):
         """
         height_map = {
             '2160p': 2160,
+            '4K': 2160,
             '1440p': 1440,
+            '2K': 1440,
             '1080p': 1080,
             '720p': 720,
             '480p': 480,
             '360p': 360
         }
         return height_map.get(quality, 0)
+    
+    def _height_to_quality(self, height: int) -> str:
+        """
+        Converte altura em pixels para string de qualidade.
+        """
+        if height >= 2160:
+            return "2160p"
+        elif height >= 1440:
+            return "1440p"
+        elif height >= 1080:
+            return "1080p"
+        elif height >= 720:
+            return "720p"
+        elif height >= 480:
+            return "480p"
+        elif height >= 360:
+            return "360p"
+        else:
+            return f"{height}p"
+    
+    async def create_video_versions_async(
+        self,
+        video_data: bytes,
+        original_metadata: Dict[str, Any],
+        target_qualities: List[str],
+        output_dir: str,
+        progress_callback: Optional[callable] = None
+    ) -> Dict[str, VideoVersion]:
+        """
+        Cria versões de vídeo de forma assíncrona com callback de progresso.
+        """
+        versions = {}
+        total_qualities = len(target_qualities)
+        
+        # Criar versão original
+        original_height = original_metadata.get('height', 0)
+        original_quality = self._height_to_quality(original_height)
+        
+        versions['original'] = VideoVersion(
+            resolution=original_quality,
+            file_path=FilePath(f"{output_dir}/original.mp4"),
+            is_original=True,
+            processing_status="completed"
+        )
+        
+        # Processar cada qualidade
+        for i, quality in enumerate(target_qualities):
+            quality_height = self._get_quality_height(quality)
+            
+            # Pular se a qualidade for maior que o original
+            if quality_height > original_height:
+                continue
+            
+            # Callback de progresso
+            if progress_callback:
+                progress_callback(quality, i + 1, total_qualities, "processing")
+            
+            try:
+                # Criar versão inicial
+                version = VideoVersion(
+                    resolution=quality,
+                    file_path=FilePath(f"{output_dir}/{quality}_processing.mp4"),
+                    is_original=False,
+                    processing_status="processing"
+                )
+                versions[quality] = version
+                
+                # Processar versão
+                processed_version = await self._process_single_quality(
+                    video_data=video_data,
+                    quality=quality,
+                    output_dir=output_dir
+                )
+                versions[quality] = processed_version
+                
+                # Callback de sucesso
+                if progress_callback:
+                    progress_callback(quality, i + 1, total_qualities, "completed")
+                
+            except Exception as e:
+                # Criar versão com erro
+                versions[quality] = VideoVersion(
+                    resolution=quality,
+                    file_path=FilePath(f"{output_dir}/{quality}_failed.mp4"),
+                    is_original=False,
+                    processing_status="failed"
+                )
+                
+                # Callback de erro
+                if progress_callback:
+                    progress_callback(quality, i + 1, total_qualities, "failed")
+        
+        return versions
     
     async def create_video_preview(
         self,
