@@ -45,7 +45,6 @@ class ImageFile(BaseFile):
                gps_latitude: Optional[float] = None,
                gps_longitude: Optional[float] = None) -> "ImageFile":
         
-        tags_list = [Tag(tag) for tag in tags]
         """Cria um novo arquivo de imagem"""
         return super().create(
             owner_id=owner_id,
@@ -53,7 +52,7 @@ class ImageFile(BaseFile):
             path=path,
             size=size,
             description=description,
-            tags=tags_list,
+            tags=tags,
             _width=width,
             _height=height,
             _color_depth=color_depth,

@@ -87,14 +87,25 @@ class PillowImageProcessingService(ImageProcessingService):
         """Verifica se um formato é vetorial."""
         return format_name.lower() in self._supported_formats['vector']
     
+    def is_image_format_valid_for_entity(self, format_name: str) -> bool:
+        """
+        Verifica se o formato é válido para a entidade ImageFile.
+        Todos os formatos suportados são válidos para ImageFile.
+        """
+        return self.is_format_supported(format_name)
+    
     async def extract_metadata(self, image_data: bytes, filename: str) -> Dict[str, Any]:
         """
         Extrai metadados completos de uma imagem.
-        Retorna apenas os metadados específicos esperados pela entidade ImageFile.
+        Retorna APENAS os campos esperados pela entidade ImageFile.
         """
         try:
             # Determinar formato baseado no conteúdo e extensão
             format_info = await self._detect_format(image_data, filename)
+            
+            # Verificar se o formato é suportado pela entidade ImageFile
+            if not self.is_image_format_valid_for_entity(format_info['format']):
+                raise ValueError(f"Formato {format_info['format']} não é suportado pela entidade ImageFile")
             
             if format_info['format'] == 'svg':
                 return await self._extract_svg_metadata(image_data, filename)
@@ -167,7 +178,7 @@ class PillowImageProcessingService(ImageProcessingService):
     async def _extract_svg_metadata(self, image_data: bytes, filename: str) -> Dict[str, Any]:
         """
         Extrai metadados específicos de arquivos SVG.
-        Retorna apenas os campos esperados pela entidade ImageFile.
+        Retorna APENAS os campos esperados pela entidade ImageFile.
         """
         try:
             svg_text = image_data.decode('utf-8')
@@ -193,7 +204,7 @@ class PillowImageProcessingService(ImageProcessingService):
                     except (ValueError, IndexError):
                         pass
             
-            # Retornar apenas os campos esperados pela entidade ImageFile
+            # Retornar APENAS os campos esperados pela entidade ImageFile
             return {
                 'width': int(numeric_width) if numeric_width else None,
                 'height': int(numeric_height) if numeric_height else None,
@@ -230,7 +241,7 @@ class PillowImageProcessingService(ImageProcessingService):
     def _extract_raster_metadata_sync(self, image_data: bytes, filename: str, format_info: Dict) -> Dict[str, Any]:
         """
         Extração síncrona de metadados para formatos raster.
-        Retorna apenas os campos esperados pela entidade ImageFile.
+        Retorna APENAS os campos esperados pela entidade ImageFile.
         """
         with Image.open(io.BytesIO(image_data)) as image:
             width, height = image.size
@@ -251,7 +262,7 @@ class PillowImageProcessingService(ImageProcessingService):
             
             compression = self._determine_compression(image, format_name)
             
-            # Retornar apenas os campos esperados pela entidade ImageFile
+            # Retornar APENAS os campos esperados pela entidade ImageFile
             return {
                 'width': width,
                 'height': height,
@@ -280,9 +291,13 @@ class PillowImageProcessingService(ImageProcessingService):
                     datetime_str = str(exif_data[field])
                     # EXIF usa formato "YYYY:MM:DD HH:MM:SS"
                     if ':' in datetime_str and len(datetime_str) >= 19:
-                        # Converter para ISO format (substituir primeiros dois ':' por '-')
-                        iso_str = datetime_str.replace(':', '-', 2)
-                        return iso_str
+                        # Converter para formato ISO (substituir primeiros dois ':' por '-')
+                        parts = datetime_str.split(' ')
+                        if len(parts) >= 2:
+                            date_part = parts[0].replace(':', '-')
+                            time_part = parts[1]
+                            iso_str = f"{date_part} {time_part}"
+                            return iso_str
                     return datetime_str
                 except:
                     continue
