@@ -17,6 +17,7 @@ from .file_size import FileSize
 from .file_type import FileType
 from .file_description import FileDescription
 from .tag import Tag
+from .video_version import VideoVersion
 
 __all__ = [
     "Email",
@@ -35,4 +36,5 @@ __all__ = [
     "FileType",
     "FileDescription",
     "Tag",
+    "VideoVersion",
 ]
