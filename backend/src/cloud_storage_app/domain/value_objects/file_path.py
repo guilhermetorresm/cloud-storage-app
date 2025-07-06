@@ -18,6 +18,7 @@ class FilePath:
 
     # Expressão regular para validar o formato do caminho.
     # Exemplo: a5b1c3d4/videos/2025/07/03/f8e7d6c5/1080p/video.mp4
+    # Exemplo thumbnail: a5b1c3d4/videos/2025/07/03/f8e7d6c5/thumbnail/thumb_video.jpg
     _path_regex = re.compile(
         r"^(?P<user_id>[^/]+)/"
         r"(?P<file_type>videos|audios|images)/"
@@ -79,7 +80,7 @@ class FilePath:
         return cls(path_str)
 
     @classmethod
-    def create_audio(cls, user_id: uuid.UUID, file_name: str, file_date: date = None) -> "FilePath":
+    def create_audio(cls, user_id: uuid.UUID, file_id: str, file_name: str, file_date: date = None) -> "FilePath":
         """
         Factory method para criar um FilePath de áudio.
 
@@ -92,7 +93,7 @@ class FilePath:
         Returns:
             FilePath: Uma nova instância de FilePath para áudio.
         """
-        if not user_id or not file_name:
+        if not user_id or not file_name or not file_id:
             raise ValueError("user_id e file_name não podem ser vazios.")
 
         today = file_date if file_date else date.today()
@@ -100,13 +101,13 @@ class FilePath:
         path_str = (
             f"{str(user_id)}/audios/"
             f"{today.year}/{today.month:02d}/{today.day:02d}/"
-            f"default/default/{file_name}"
+            f"{file_id}/default/{file_name}"
         )
         
         return cls(path_str)
 
     @classmethod
-    def create_image(cls, user_id: uuid.UUID, file_name: str, file_date: date = None) -> "FilePath":
+    def create_image(cls, user_id: uuid.UUID, file_id: str, file_name: str, file_date: date = None) -> "FilePath":
         """
         Factory method para criar um FilePath de imagem.
 
@@ -127,10 +128,43 @@ class FilePath:
         path_str = (
             f"{str(user_id)}/images/"
             f"{today.year}/{today.month:02d}/{today.day:02d}/"
-            f"default/default/{file_name}"
+            f"{file_id}/default/{file_name}"
         )
         
         return cls(path_str)
+    
+    @classmethod
+    def create_thumbnail(cls, user_id: uuid.UUID, file_id: str, file_name: str, file_type: str, file_date: date = None) -> "FilePath":
+        """
+        Factory method para criar um FilePath de thumbnails.
+
+        Args:
+            user_id (uuid.UUID): O ID do usuário.
+            file_id (str): O ID do arquivo.
+            file_type (str): O tipo do arquivo ('videos', 'audios', 'images').
+            file_name (str): O nome do arquivo com extensão.
+            file_date (date, optional): A data a ser usada no caminho. Defaults to None.
+
+        Returns:
+            FilePath: Uma nova instância de FilePath para thumbnail.
+        """
+        if not user_id or not file_id or not file_name or not file_type:
+            raise ValueError("user_id, file_id, file_name e file_type não podem ser vazios.")
+
+        today = file_date if file_date else date.today()
+
+        # Gera nome do thumbnail baseado no arquivo original
+        name_thumb = f"thumb_{file_name}"
+        
+        # Estrutura: user_id/file_type/YYYY/MM/DD/file_id/thumbnail/thumb_filename.ext
+        path_str = (
+            f"{str(user_id)}/{file_type}/"
+            f"{today.year}/{today.month:02d}/{today.day:02d}/"
+            f"{file_id}/thumbnail/{name_thumb}"
+        )
+        
+        return cls(path_str)
+
 
     @classmethod
     def create(cls, user_id: uuid.UUID, file_type: str, file_name: str, 
@@ -140,10 +174,10 @@ class FilePath:
 
         Args:
             user_id (uuid.UUID): O ID do usuário.
+            file_id (str): O ID do arquivo.
             file_type (str): O tipo do arquivo ('videos', 'audios', 'images').
             file_name (str): O nome do arquivo com extensão.
             file_date (date, optional): A data a ser usada no caminho. Defaults to None.
-            file_id (str, optional): O ID do arquivo (apenas para vídeos). Defaults to None.
             resolution (str, optional): A resolução (apenas para vídeos). Defaults to None.
 
         Returns:
@@ -154,9 +188,9 @@ class FilePath:
                 raise ValueError("file_id e resolution são obrigatórios para vídeos.")
             return cls.create_video(user_id, file_id, resolution, file_name, file_date)
         elif file_type == 'audios':
-            return cls.create_audio(user_id, file_name, file_date)
+            return cls.create_audio(user_id, file_id, file_name, file_date)
         elif file_type == 'images':
-            return cls.create_image(user_id, file_name, file_date)
+            return cls.create_image(user_id, file_id, file_name, file_date)
         else:
             raise ValueError(f"Tipo de arquivo não suportado: {file_type}")
 
@@ -220,6 +254,22 @@ class FilePath:
     def is_image(self) -> bool:
         """Verifica se o arquivo é uma imagem."""
         return self.file_type == 'images'
+
+    @property
+    def is_thumbnail(self) -> bool:
+        """Verifica se o arquivo é um thumbnail."""
+        return self.resolution == 'thumbnail'
+
+    @property
+    def thumbnail_for(self) -> Optional[str]:
+        """Se for um thumbnail, retorna o nome do arquivo original (sem 'thumb_' prefix)."""
+        if not self.is_thumbnail:
+            return None
+        
+        file_name = self.file_name_with_ext
+        if file_name.startswith('thumb_'):
+            return file_name[6:]  # Remove 'thumb_' prefix
+        return file_name
 
     def __str__(self) -> str:
         """Retorna a representação em string do caminho."""
