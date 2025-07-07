@@ -12,6 +12,10 @@ from cloud_storage_app.application.services.password_service import PasswordAppl
 from cloud_storage_app.infrastructure.database.connection import DatabaseManager
 from cloud_storage_app.infrastructure.database.repositories.user_repository import UserRepository
 from cloud_storage_app.infrastructure.storage.s3_storage_service import S3StorageService
+from cloud_storage_app.infrastructure.external.audio_processing_service import MutagenAudioProcessingService
+from cloud_storage_app.infrastructure.external.image_processing_service import PillowImageProcessingService
+from cloud_storage_app.infrastructure.external.video_processing_service import FFmpegVideoProcessingService
+from cloud_storage_app.infrastructure.external.thumbnail_generator_service import PillowThumbnailGeneratorService
 
 from cloud_storage_app.application.use_cases.auth.login_use_case import LoginUseCase
 
@@ -21,6 +25,7 @@ from cloud_storage_app.application.use_cases.user.change_password_use_case impor
 from cloud_storage_app.application.use_cases.user.update_user_use_case import UpdateUserUseCase
 
 from cloud_storage_app.application.use_cases.files.list_user_files_use_case import ListUserFilesUseCase
+from cloud_storage_app.application.use_cases.files.upload_file_use_case import UploadFileUseCase
 
 from cloud_storage_app.config import get_settings
 
@@ -60,6 +65,21 @@ class Container(containers.DeclarativeContainer):
     storage_service = providers.Singleton(
         S3StorageService,
         storage_settings=storage_settings
+    )
+    
+    # Serviços de processamento de mídia
+    thumbnail_generator_service = providers.Singleton(PillowThumbnailGeneratorService)
+    
+    audio_processing_service = providers.Singleton(MutagenAudioProcessingService)
+    
+    image_processing_service = providers.Singleton(
+        PillowImageProcessingService,
+        thumbnail_generator=thumbnail_generator_service
+    )
+    
+    video_processing_service = providers.Singleton(
+        FFmpegVideoProcessingService,
+        thumbnail_service=thumbnail_generator_service
     )
     
     # ==========================================
@@ -123,6 +143,15 @@ class Container(containers.DeclarativeContainer):
     list_user_files_use_case = providers.Factory(
         ListUserFilesUseCase,
         jwt_service=jwt_service
+    )
+    
+    upload_file_use_case = providers.Factory(
+        UploadFileUseCase,
+        audio_processing_service=audio_processing_service,
+        image_processing_service=image_processing_service,
+        video_processing_service=video_processing_service,
+        thumbnail_generator_service=thumbnail_generator_service,
+        jwt_service=jwt_service,
     )
 
 # ==========================================
@@ -237,6 +266,15 @@ get_jwt_service = Provide[Container.jwt_service]
 get_password_application_service = Provide[Container.password_application_service]
 get_database_manager = Provide[Container.database_manager]
 get_settings_from_container = Provide[Container.settings]
+
+# Função para obter storage service
+def get_storage_service():
+    """
+    Dependency para obter o serviço de storage.
+    Use como: storage_service = Depends(get_storage_service)
+    """
+    container = get_container()
+    return container.storage_service()
 
 # Repositórios (precisam de sessão externa)
 # get_user_repository = Provide[Container.user_repository]
