@@ -69,7 +69,7 @@ export default function Sidebar() {
       
     } catch (error) {
       console.error('Erro ao buscar arquivos:', error);
-      setError('Erro ao carregar arquivos');
+      //setError('Erro ao carregar arquivos');
     } finally {
       setLoading(false);
     }
