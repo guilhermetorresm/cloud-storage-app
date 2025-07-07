@@ -17,6 +17,7 @@ from cloud_storage_app.infrastructure.database.repositories import (
 )
 from cloud_storage_app.domain.value_objects.user_id import UserId
 from cloud_storage_app.domain.value_objects.file_id import FileId
+from cloud_storage_app.domain.infrastructure.storage import S3StorageService
 from cloud_storage_app.infrastructure.auth.jwt_service import JWTService, TokenPayload
 from cloud_storage_app.application.dtos.file_dtos import (
     GetFileDetailsInputDTO, FileDetailsOutputDTO,
@@ -56,10 +57,10 @@ class GetFileDetailsUseCase:
     def __init__(
         self,
         jwt_service: JWTService,
-        # url_service: URLService,  # Serviço para gerar URLs presigned - será implementado quando disponível
+        storage_service: IStorageService = Provide["storage_service"],
     ):
         self._jwt_service = jwt_service
-        # self._url_service = url_service
+        self._storage_service = storage_service
         self._db_session = None  # Será definida no execute()
         self._user_repository = None  # Será criada no execute()
         self._audio_repository = None  # Será criada no execute()
@@ -362,7 +363,7 @@ class GetFileDetailsUseCase:
     
     async def _generate_download_url(self, file_entity) -> Optional[str]:
         """
-        Gera URL de download temporária para o arquivo.
+        Gera URL de download temporária para o arquivo usando o S3StorageService.
         
         Args:
             file_entity: Entidade do arquivo
@@ -373,24 +374,32 @@ class GetFileDetailsUseCase:
         try:
             logger.debug(f"Gerando URL de download para arquivo: {file_entity.file_id}")
             
-            # TODO: Implementar com serviço de URL quando disponível
-            # Exemplo de implementação futura:
-            # return await self._url_service.generate_presigned_url(
-            #     file_path=file_entity.path.value,
-            #     expiration_minutes=60,  # 1 hora de validade
-            #     content_type=file_entity.file_type.mime_type
-            # )
+            # Verificar se a entidade tem o atributo path
+            if not hasattr(file_entity, 'path') or not file_entity.path:
+                logger.warning(f"Arquivo sem caminho definido: {file_entity.file_id}")
+                return None
             
-            # Placeholder - URL temporária baseada no ID do arquivo
-            download_url = f"/api/v1/files/{file_entity.file_id.value}/download"
-            logger.debug(f"URL de download gerada: {download_url}")
+            # Gerar URL pré-assinada usando o S3StorageService
+            # Configurar tempo de expiração para 1 hora (3600 segundos)
+            expiration_seconds = 3600
             
-            return download_url
+            download_url = await self._storage_service.get_presigned_url(
+                file_path=file_entity.path,
+                expiration=expiration_seconds
+            )
+            
+            if download_url:
+                logger.debug(f"URL de download gerada com sucesso para arquivo: {file_entity.file_id}")
+                return download_url
+            else:
+                logger.warning(f"Não foi possível gerar URL de download para arquivo: {file_entity.file_id}")
+                # Fallback para endpoint interno em caso de falha
+                return f"/api/v1/files/{file_entity.file_id.value}/download"
             
         except Exception as e:
             logger.error(f"Erro ao gerar URL de download: {str(e)}")
-            # Retornar None em caso de erro, não falhar o caso de uso
-            return None
+            # Retornar endpoint interno em caso de erro
+            return f"/api/v1/files/{file_entity.file_id.value}/download"
     
     async def _update_last_accessed(self, file_entity) -> None:
         """
