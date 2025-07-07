@@ -48,6 +48,7 @@ export default function App() {
             </PrivateRoute>
           }
         />
+
       </Routes>
     </Router>
   );

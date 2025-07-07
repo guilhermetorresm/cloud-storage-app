@@ -9,7 +9,9 @@ import {
 } from "react-icons/fa";
 import TopbarNoSearch from "../Components/TopbarNoSearch";
 import { Link, useNavigate } from "react-router-dom";
-import { fetchWithAuth } from "../Utils/fetchWithAuth"; 
+
+import { fetchWithAuth } from "../Utils/fetchWithAuth";
+
 
 export default function EditProfile() {
   const [name, getFirstName] = useState("");
@@ -17,17 +19,21 @@ export default function EditProfile() {
   const [username, getUsername] = useState("");
   const [email, setEmail] = useState("");
   const [description, getDescription] = useState("");
+
+  const [profileImage, setProfileImage] = useState(null); // NOVO
+
+
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const response = await fetchWithAuth(`${process.env.REACT_APP_API_URL}/api/v1/users/me`,
-           {
-          method: "GET"},
+        const response = await fetchWithAuth(
+          `${process.env.REACT_APP_API_URL}/api/v1/users/me`,
+          { method: "GET" },
           navigate
         );
-       
+
 
         if (!response.ok) {
           throw new Error("Erro ao buscar perfil");
@@ -36,12 +42,15 @@ export default function EditProfile() {
         const data = await response.json();
 
         console.log("Resposta perfil: ", data);
-        
+
         getFirstName(data.first_name || "");
         getLastName(data.last_name || "");
         getUsername(data.username || "");
         setEmail(data.email || "");
-        getDescription(data.description || ""); 
+
+        getDescription(data.description || "");
+        setProfileImage(data.profile_image || null); // NOVO
+
       } catch (err) {
         console.error(err);
       }
@@ -58,20 +67,30 @@ export default function EditProfile() {
     <div className="flex flex-col h-screen">
       <TopbarNoSearch />
       <div className="flex items-center justify-center h-full overflow-y-auto bg-gradient-to-r from-white to-gray-100">
-        {/* Box geral */}
+
         <div className="max-w-4xl mx-auto w-full h-auto bg-white border border-gray-300 rounded-xl shadow-md p-8 flex flex-col gap-8">
-          {/* Título da box centralizado */}
+
           <h2 className="w-full h-0.5 text-3xl font-bold mb-6 text-center">
             Informações da conta:
           </h2>
 
-          {/* Conteúdo dividido em dois lados */}
+
           <div className="flex flex-col md:flex-row gap-20">
             {/* Lado Esquerdo */}
             <div className="flex flex-col items-center md:w-1/3">
-              <div className="w-40 h-40 rounded-full bg-gray-300 relative">
-                {/* Foto de perfil */}
+              <div className="w-40 h-40 rounded-full bg-gray-300 relative overflow-hidden flex items-center justify-center">
+                {profileImage ? (
+                  <img
+                    src={profileImage}
+                    alt="Foto de perfil"
+                    className="w-full h-full object-cover rounded-full"
+                  />
+                ) : (
+                  <FaUser className="text-gray-500 text-6xl" />
+                )}
               </div>
+
+
               <div className="py-6 w-full">
                 <label
                   htmlFor="descricao"
@@ -80,21 +99,22 @@ export default function EditProfile() {
                   Descrição
                 </label>
                 <div className="opacity-60">
-                
-                <textarea
-                  className=" w-full border rounded-xl bg-gray-200 p-3 resize-none min-h-[100px] text-gray-1000 font-medium"
-                  placeholder="+ Descrição"
-                  value={description}
-                  disabled
-                />
-              </div>
+
+                  <textarea
+                    className="w-full border rounded-xl bg-gray-200 p-3 resize-none min-h-[100px] text-gray-1000 font-medium"
+                    placeholder="+ Descrição"
+                    value={description}
+                    disabled
+                  />
+                </div>
+
               </div>
             </div>
 
             {/* Lado Direito */}
             <div className="flex-1">
               <div className="flex flex-col">
-                {/* Nome */}
+
                 <label
                   htmlFor="fullName"
                   className="text-sm text-gray-500 mb-px"
@@ -112,9 +132,10 @@ export default function EditProfile() {
                   />
                 </div>
 
-                {/* Sobrenome */}
+<
                 <label
-                  htmlFor="fullName"
+                  htmlFor="lastName"
+
                   className="text-sm text-gray-500 mb-px"
                 >
                   Sobrenome
@@ -130,7 +151,6 @@ export default function EditProfile() {
                   />
                 </div>
 
-                {/* Usuário */}
                 <label
                   htmlFor="username"
                   className="text-sm text-gray-500 mb-px"
@@ -148,7 +168,7 @@ export default function EditProfile() {
                   />
                 </div>
 
-                {/* Email */}
+
                 <label htmlFor="email" className="text-sm text-gray-500 mb-px">
                   Email
                 </label>
@@ -163,7 +183,7 @@ export default function EditProfile() {
                 </div>
               </div>
 
-              {/* Botão */}
+
               <div className="flex gap-4 mt-6 justify-center">
                 <button
                   onClick={handleEditarPerfil}
@@ -172,7 +192,7 @@ export default function EditProfile() {
                   Editar Perfil
                 </button>
               </div>
-              {/* Link para alterar senha - MODIFICAÇÃO PRINCIPAL */}
+
               <div className="flex gap-4 mt-6 justify-center">
                 <Link
                   to="/editPassword"

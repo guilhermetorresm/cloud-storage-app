@@ -1,93 +1,97 @@
 import { useEffect, useState } from "react";
 import Topbar from "../Components/Topbar";
 import Sidebar from "../Components/Sidebar";
-import {
-  FaFilePdf,
-  FaFileAudio,
-  FaFileVideo,
-  FaFileArchive,
-  FaFileAlt,
-  FaArrowLeft,
-  FaArrowRight,
-  FaBars,
-  FaTimes,
-} from "react-icons/fa";
 
-// Mock de arquivos
-const mockArquivos = [
-  {
-    id: "1",
-    nome: "Coração.png",
-    tipo: "image",
-    url: "https://via.placeholder.com/100x100.png?text=Img1",
-  },
-  { id: "2", nome: "Áudio.mp3", tipo: "audio" },
-  { id: "3", nome: "Vídeo.mp4", tipo: "video" },
-  { id: "4", nome: "Documento.PDF", tipo: "pdf" },
-  { id: "5", nome: "Texto.txt", tipo: "text" },
-  { id: "6", nome: "Arquivos.zip", tipo: "zip" },
-];
+import { FaBars, FaTimes } from "react-icons/fa";
+import FileCard from "../Components/fileCard";
+import { FileViewer } from "../Components/file-viewer";
+import { fetchWithAuth } from "../Utils/fetchWithAuth";
+import { useNavigate } from "react-router-dom";
 
-// Componente de visualização dos arquivos
-const FileCard = ({ file }) => {
-  let icon;
-
-  if (file.tipo === "image") {
-    return (
-      <div className="bg-white rounded-xl shadow p-3 flex flex-col items-center">
-        <img
-          src={file.url}
-          alt={file.nome}
-          className="w-20 h-20 object-cover rounded"
-        />
-        <p className="text-sm mt-2 truncate text-center">{file.nome}</p>
-      </div>
-    );
-  }
-
-  switch (file.tipo) {
-    case "audio":
-      icon = <FaFileAudio size={50} className="text-indigo-500" />;
-      break;
-    case "video":
-      icon = <FaFileVideo size={50} className="text-red-500" />;
-      break;
-    case "pdf":
-      icon = <FaFilePdf size={50} className="text-blue-600" />;
-      break;
-    case "text":
-      icon = <FaFileAlt size={50} className="text-green-600" />;
-      break;
-    case "zip":
-      icon = <FaFileArchive size={50} className="text-black" />;
-      break;
-    default:
-      icon = <FaFileAlt size={50} />;
-  }
-
-  return (
-    <div className="bg-white rounded-xl shadow p-3 flex flex-col items-center text-center">
-      {icon}
-      <p className="text-sm mt-2 truncate">{file.nome}</p>
-    </div>
-  );
-};
 
 export default function Dashboard() {
   const [arquivos, setArquivos] = useState([]);
   const [menuAberto, setMenuAberto] = useState(false);
 
+  const [selectedFileId, setSelectedFileId] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
+
+  // 🔹 Carrega os arquivos iniciais ao entrar
   useEffect(() => {
-    setTimeout(() => {
-      setArquivos(mockArquivos);
-    }, 500);
+    fetchArquivosPadrao();
   }, []);
 
-  return (
-    <div className="flex flex-col min-h-screen">
-      <Topbar />
+  const fetchArquivosPadrao = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetchWithAuth(
+        `${process.env.REACT_APP_API_URL}/api/v1/files/list`
+      );
 
-      {/* Botão hambúrguer para mobile */}
+      if (response.ok) {
+        const data = await response.json();
+        const adaptados = adaptarArquivos(data.files);
+        setArquivos(adaptados);
+      } else {
+        if (response.status === 403 || response.status === 401) {
+          localStorage.removeItem("authToken");
+          navigate("/login");
+        }
+        console.error("Erro ao buscar arquivos padrão:", response.status);
+      }
+    } catch (err) {
+      console.error("Erro ao carregar arquivos:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 🔹 Atualiza a lista de arquivos com os resultados da busca
+  const handleSearchResults = (resultados) => {
+    const adaptados = adaptarArquivos(resultados);
+    setArquivos(adaptados);
+  };
+
+  const adaptarArquivos = (lista) => {
+    if (!Array.isArray(lista)) return [];
+
+    return lista.map((item) => ({
+      id: item.file_id,
+      title: item.name,
+      type: item.category,
+      url: item.thumbnail_url,
+      thumbnail_url: item.thumbnail_url,
+      size: item.size,
+      size_humanized: item.size_humanized,
+      createdAt: new Date(item.created_at),
+      uploadDate: new Date(item.created_at).toLocaleDateString("pt-BR"),
+      description: item.description,
+      tags: Array.isArray(item.tags) ? item.tags : [],
+      duration: null,
+    })).sort((a, b) => b.createdAt - a.createdAt);
+  };
+
+  const handleFileCardClick = (fileObject) => {
+    setSelectedFileId(fileObject.id);
+  };
+
+  const handleCloseFileViewer = () => {
+    setSelectedFileId(null);
+  };
+
+  const handleFileMetadataUpdate = (fileId, updatedMetadata) => {
+    setArquivos((prev) =>
+      prev.map((arquivo) =>
+        arquivo.id === fileId ? { ...arquivo, ...updatedMetadata } : arquivo
+      )
+    );
+  };
+
+  return (
+    <div className="flex flex-col h-screen">
+      <Topbar onSearchResults={handleSearchResults} />
+
       <div className="sm:hidden flex items-center justify-between bg-white shadow p-4">
         <button
           onClick={() => setMenuAberto(true)}
@@ -97,7 +101,6 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {/* Menu lateral deslizante (mobile) */}
       {menuAberto && (
         <div className="fixed inset-0 z-50 flex">
           <div className="w-64 bg-white shadow-lg p-4">
@@ -119,42 +122,48 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Conteúdo principal com sidebar (visível em telas maiores) */}
-      <div className="flex flex-1">
+      <div className="flex flex-1 overflow-hidden">
+
         <div className="hidden sm:block">
           <Sidebar />
         </div>
 
         <main className="flex-1 bg-gray-100 p-4 sm:p-6 overflow-auto">
-          <div className="max-w-6xl mx-auto">
-            {arquivos.length === 0 ? (
-              <p className="text-center">Carregando arquivos...</p>
+          <div className="max-w-6xl mx-auto min-h-full flex flex-col items-start justify-start">
+            {isLoading ? (
+              <p className="text-gray-500 text-center">Carregando arquivos...</p>
+            ) : arquivos.length === 0 ? (
+              <p className="text-gray-400 text-center text-lg">
+                Nenhum arquivo encontrado.
+              </p>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+              <div
+                className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 w-full"
+    
+              >
                 {arquivos.map((file) => (
-                  <FileCard key={file.id} file={file} />
+                  <FileCard
+                    key={file.id}
+                    file={file}
+                    onClick={handleFileCardClick}
+                  />
+
                 ))}
               </div>
             )}
           </div>
 
-          {/* Paginação */}
-          <div className="flex justify-center items-center mt-6 space-x-2">
-            <button className="p-2 bg-white rounded-full shadow hover:bg-gray-200">
-              <FaArrowLeft />
-            </button>
-            <div className="flex space-x-1 text-sm">
-              <span className="px-2 py-1 bg-black text-white rounded">1</span>
-              <span className="px-2 py-1">2</span>
-              <span className="px-2 py-1">3</span>
-              <span className="px-2 py-1">...</span>
-            </div>
-            <button className="p-2 bg-white rounded-full shadow hover:bg-gray-200">
-              <FaArrowRight />
-            </button>
-          </div>
         </main>
       </div>
+
+      {selectedFileId && (
+        <FileViewer
+          fileId={selectedFileId}
+          onClose={handleCloseFileViewer}
+          onMetadataUpdate={handleFileMetadataUpdate}
+        />
+      )}
+
     </div>
   );
 }
