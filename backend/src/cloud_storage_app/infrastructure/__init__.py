@@ -4,7 +4,7 @@ Infrastructure layer - External concerns
 from .database import *
 from .auth import *
 from .storage import *
-from .external import *
+from .external import FFmpegVideoProcessingService, PillowImageProcessingService, PillowThumbnailGeneratorService, MutagenAudioProcessingService
 
 __all__ = [
     # Database
@@ -20,4 +20,8 @@ __all__ = [
     
     # External
     # Add external service exports here when implemented
+    "MutagenAudioProcessingService",
+    "FFmpegVideoProcessingService",
+    "PillowImageProcessingService",
+    "PillowThumbnailGeneratorService",
 ]
