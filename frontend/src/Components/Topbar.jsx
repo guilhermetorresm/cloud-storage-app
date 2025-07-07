@@ -31,7 +31,7 @@ export default function Topbar({ onSearchResults }) {
     fetchProfileImage();
   }, []);
 
-  // Função para buscar arquivos por nome ou tags
+  // Função para buscar arquivos por nome E/OU tags
   const searchFiles = async (searchQuery) => {
     if (!searchQuery.trim()) {
       // Se a busca estiver vazia, retorna uma lista vazia ou todos os arquivos, dependendo do desejado
@@ -42,21 +42,19 @@ export default function Topbar({ onSearchResults }) {
     }
 
     setLoading(true);
-    
+
     try {
-      const searchTerms = searchQuery.split(",").map((term) => term.trim()).filter(term => term !== '');
       let url = `${process.env.REACT_APP_API_URL}/api/v1/files/list`;
       const queryParams = [];
+      const encodedSearchTerm = encodeURIComponent(searchQuery.trim());
 
-      // Lógica para decidir se busca por nome ou por tags
-      if (searchTerms.length === 1 && !searchQuery.includes(',')) {
-        // Assume que é um nome de arquivo se for um único termo sem vírgulas
-        queryParams.push(`file_name=${encodeURIComponent(searchTerms[0])}`);
-      } else if (searchTerms.length > 0) {
-        // Se houver múltiplos termos ou um único termo com vírgula, trata como tags
-        // O backend precisará interpretar isso como uma busca "OU" para as tags
-        queryParams.push(`tags=${encodeURIComponent(searchTerms.join(','))}`);
-      }
+      // Adiciona o termo de busca para o nome do arquivo
+      queryParams.push(`file_name=${encodedSearchTerm}`);
+      
+      // Adiciona o termo de busca para as tags. 
+      // A API já espera tags separadas por vírgulas, mas se o usuário digitar uma única palavra,
+      // ela pode ser usada como uma única tag para busca parcial.
+      queryParams.push(`tags=${encodedSearchTerm}`);
 
       if (queryParams.length > 0) {
         url += `?${queryParams.join('&')}`;
@@ -70,9 +68,9 @@ export default function Topbar({ onSearchResults }) {
 
       if (response.ok) {
         const data = await response.json();
-        // Chama a função callback para atualizar os resultados no componente pai
+        // O JSON de retorno tem um array 'files' dentro dele
         if (onSearchResults) {
-          onSearchResults(data);
+          onSearchResults(data.files || []);
         }
       } else {
         console.error("Erro ao buscar arquivos:", response.status);
@@ -142,7 +140,7 @@ export default function Topbar({ onSearchResults }) {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <input
             type="text"
-            placeholder="Pesquisar por nome ou tags (separadas por vírgula)..."
+            placeholder="Pesquisar por nome ou tags..."
             value={searchTerm}
             onChange={handleSearchChange}
             onKeyPress={handleKeyPress}

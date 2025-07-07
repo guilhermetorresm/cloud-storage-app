@@ -55,7 +55,7 @@ const fileTypeColors = {
 };
 
 // --- AGORA: FileViewer recebe fileId, não o objeto 'file' completo ---
-export function FileViewer({ fileId, onClose, onMetadataUpdate }) {
+export function FileViewer({ fileId, onClose, onMetadataUpdate, onFileDelete }) {
   const [file, setFile] = useState(null); // Estado para o arquivo completo (detalhes da API)
   const [loading, setLoading] = useState(true); // Indica se está carregando os detalhes
   const [error, setError] = useState(null); // Erros ao carregar detalhes
@@ -195,6 +195,55 @@ export function FileViewer({ fileId, onClose, onMetadataUpdate }) {
   // Agora 'file' contém todos os metadados detalhados
   const fileToDisplay = file;
   const IconComponent = fileTypeIcons[fileToDisplay.type] || fileTypeIcons.other;
+
+  // APROXIMADAMENTE A PARTIR DAQUI (linha 316, dependendo de como você formatou o código)
+const handleDelete = async () => {
+    if (!fileToDisplay || !fileToDisplay.id) {
+      alert("ID do arquivo não disponível para exclusão.");
+      return;
+    }
+
+    if (!window.confirm(`Tem certeza que deseja deletar o arquivo "${fileToDisplay.title}"? Esta ação é irreversível.`)) {
+      return;
+    }
+
+    try {
+      const accessToken = getAccessToken();
+      if (!accessToken) {
+        throw new Error("Token de acesso não encontrado. Por favor, faça login.");
+      }
+
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/api/v1/files/${fileToDisplay.id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || `Erro ao deletar: ${response.status}`);
+        } else {
+          const errorText = await response.text();
+          throw new Error(`Resposta inesperada do servidor ao deletar: ${response.status}. Conteúdo: ${errorText.substring(0, 200)}...`);
+        }
+      }
+
+      alert("Arquivo deletado com sucesso!");
+      onClose();
+      if (onFileDelete) {
+        onFileDelete(fileToDisplay.id);
+      }
+    } catch (err) {
+      console.error("Erro ao deletar arquivo:", err);
+      alert(`Falha ao deletar arquivo: ${err.message}`);
+    }
+};
 
   const handleSave = async () => {
     try {
@@ -608,7 +657,7 @@ export function FileViewer({ fileId, onClose, onMetadataUpdate }) {
                 <Download className="h-4 w-4 mr-1" />
                 Download
               </a>
-              <Button variant="destructive" className="flex-1">
+              <Button variant="destructive" className="flex-1" onClick={handleDelete}>
                 <Trash2 className="h-4 w-4 mr-1" />
                 Deletar
               </Button>
