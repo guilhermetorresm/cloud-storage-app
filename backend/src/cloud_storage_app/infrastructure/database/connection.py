@@ -53,6 +53,14 @@ class DatabaseManager:
     async def initialize(self) -> None:
         """Inicializa a conexão com o banco de dados"""
         try:
+            # Importar todos os modelos para garantir que os relacionamentos sejam configurados
+            from .models import UserModel, AudioFileModel, ImageFileModel, VideoFileModel
+            
+            # Configurar relacionamentos explicitamente
+            from sqlalchemy.orm import configure_mappers
+            configure_mappers()
+            logger.info("SQLAlchemy mappers configured successfully")
+            
             # Configurações da engine
             engine_kwargs = {
                 "url": str(self._settings.database.get_database_url()),
@@ -87,6 +95,9 @@ class DatabaseManager:
                 autoflush=True,
                 autocommit=False,
             )
+            
+            # Verificar se os relacionamentos estão configurados
+            logger.info(f"UserModel relationships: {[rel.key for rel in UserModel.__mapper__.relationships]}")
             
             logger.info("Database connection initialized successfully")
             

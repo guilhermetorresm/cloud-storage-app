@@ -11,6 +11,11 @@ from cloud_storage_app.infrastructure.auth.jwt_service import JWTService
 from cloud_storage_app.application.services.password_service import PasswordApplicationService
 from cloud_storage_app.infrastructure.database.connection import DatabaseManager
 from cloud_storage_app.infrastructure.database.repositories.user_repository import UserRepository
+from cloud_storage_app.infrastructure.storage.s3_storage_service import S3StorageService
+from cloud_storage_app.infrastructure.external.audio_processing_service import MutagenAudioProcessingService
+from cloud_storage_app.infrastructure.external.image_processing_service import PillowImageProcessingService
+from cloud_storage_app.infrastructure.external.video_processing_service import FFmpegVideoProcessingService
+from cloud_storage_app.infrastructure.external.thumbnail_generator_service import PillowThumbnailGeneratorService
 
 from cloud_storage_app.application.use_cases.auth.login_use_case import LoginUseCase
 
@@ -18,6 +23,18 @@ from cloud_storage_app.application.use_cases.user.create_user_use_case import Cr
 from cloud_storage_app.application.use_cases.user.get_current_user_use_case import GetCurrentUserUseCase
 from cloud_storage_app.application.use_cases.user.change_password_use_case import ChangePasswordUseCase
 from cloud_storage_app.application.use_cases.user.update_user_use_case import UpdateUserUseCase
+
+from cloud_storage_app.application.use_cases.files.list_user_files_use_case import ListUserFilesUseCase
+
+from cloud_storage_app.application.use_cases.files.update_file_metadata_use_case import UpdateFileMetadataUseCase
+
+from cloud_storage_app.application.use_cases.files.upload_file_use_case import UploadFileUseCase
+
+
+from cloud_storage_app.application.use_cases.files.delete_file_use_case import DeleteFileUseCase
+
+from cloud_storage_app.application.use_cases.files.get_file_details_use_case import GetFileDetailsUseCase
+
 
 from cloud_storage_app.config import get_settings
 
@@ -38,6 +55,9 @@ class Container(containers.DeclarativeContainer):
     
     # Configurações da aplicação
     settings = providers.Singleton(get_settings)
+
+    # Extrair configurações específicas para facilitar a injeção
+    storage_settings = providers.Singleton(lambda s: s.storage, settings)
     
     # ==========================================
     # INFRAESTRUTURA (Singleton)
@@ -49,6 +69,27 @@ class Container(containers.DeclarativeContainer):
     # Serviços de infraestrutura
     password_service = providers.Singleton(PasswordService)
     jwt_service = providers.Singleton(JWTService)
+
+    # Adicione o serviço de storage AQUI
+    storage_service = providers.Singleton(
+        S3StorageService,
+        storage_settings=storage_settings
+    )
+    
+    # Serviços de processamento de mídia
+    thumbnail_generator_service = providers.Singleton(PillowThumbnailGeneratorService)
+    
+    audio_processing_service = providers.Singleton(MutagenAudioProcessingService)
+    
+    image_processing_service = providers.Singleton(
+        PillowImageProcessingService,
+        thumbnail_generator=thumbnail_generator_service
+    )
+    
+    video_processing_service = providers.Singleton(
+        FFmpegVideoProcessingService,
+        thumbnail_service=thumbnail_generator_service
+    )
     
     # ==========================================
     # REPOSITÓRIOS (Factory)
@@ -105,6 +146,40 @@ class Container(containers.DeclarativeContainer):
         LoginUseCase,
         password_service=password_service,
         jwt_service=jwt_service
+    )
+    
+    # Casos de uso de arquivos
+    list_user_files_use_case = providers.Factory(
+        ListUserFilesUseCase,
+        jwt_service=jwt_service,
+        storage_service=storage_service
+    )
+    
+    upload_file_use_case = providers.Factory(
+        UploadFileUseCase,
+        audio_processing_service=audio_processing_service,
+        image_processing_service=image_processing_service,
+        video_processing_service=video_processing_service,
+        thumbnail_generator_service=thumbnail_generator_service,
+        jwt_service=jwt_service,
+    )
+
+
+    update_file_metadata_use_case = providers.Factory(
+        UpdateFileMetadataUseCase,
+        jwt_service=jwt_service,
+    )
+
+    delete_file_use_case = providers.Factory(
+        DeleteFileUseCase,
+        jwt_service=jwt_service,
+        storage_service=storage_service,
+    )
+
+    get_file_details_use_case = providers.Factory(
+        GetFileDetailsUseCase,
+        jwt_service=jwt_service,
+        storage_service=storage_service
     )
 
 # ==========================================
@@ -220,6 +295,15 @@ get_password_application_service = Provide[Container.password_application_servic
 get_database_manager = Provide[Container.database_manager]
 get_settings_from_container = Provide[Container.settings]
 
+# Função para obter storage service
+def get_storage_service():
+    """
+    Dependency para obter o serviço de storage.
+    Use como: storage_service = Depends(get_storage_service)
+    """
+    container = get_container()
+    return container.storage_service()
+
 # Repositórios (precisam de sessão externa)
 # get_user_repository = Provide[Container.user_repository]
 
@@ -229,6 +313,7 @@ get_get_current_user_use_case = Provide[Container.get_current_user_use_case]
 get_change_password_use_case = Provide[Container.change_password_use_case]
 get_update_user_use_case = Provide[Container.update_user_use_case]
 get_login_use_case = Provide[Container.login_use_case]
+get_get_file_details_use_case = Provide[Container.get_file_details_use_case]
 
 # Função para obter sessão de banco (context manager)
 async def get_database_session():
