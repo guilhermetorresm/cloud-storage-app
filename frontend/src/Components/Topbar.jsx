@@ -31,28 +31,46 @@ export default function Topbar({ onSearchResults }) {
     fetchProfileImage();
   }, []);
 
-  // Função para buscar arquivos por nome ou tags
+  // Função para buscar arquivos por nome E/OU tags
   const searchFiles = async (searchQuery) => {
     if (!searchQuery.trim()) {
-      // Se a busca estiver vazia, você pode optar por carregar todos os arquivos
+      // Se a busca estiver vazia, retorna uma lista vazia ou todos os arquivos, dependendo do desejado
       if (onSearchResults) {
-        onSearchResults([]);
+        onSearchResults([]); // Retorna uma lista vazia para busca em branco
       }
       return;
     }
 
     setLoading(true);
-    
+
     try {
-      const response = await fetchWithAuth(
-        `${process.env.REACT_APP_API_URL}/api/v1/files/list?file_name=${encodeURIComponent(searchQuery)}`
-      );
+      let url = `${process.env.REACT_APP_API_URL}/api/v1/files/list`;
+      const queryParams = [];
+      const encodedSearchTerm = encodeURIComponent(searchQuery.trim());
+
+      // Adiciona o termo de busca para o nome do arquivo
+      queryParams.push(`file_name=${encodedSearchTerm}`);
+      
+      // Adiciona o termo de busca para as tags. 
+      // A API já espera tags separadas por vírgulas, mas se o usuário digitar uma única palavra,
+      // ela pode ser usada como uma única tag para busca parcial.
+      queryParams.push(`tags=${encodedSearchTerm}`);
+
+      if (queryParams.length > 0) {
+        url += `?${queryParams.join('&')}`;
+      }
+
+      // --- Adicione este console.log para depurar a URL ---
+      console.log("URL da busca enviada:", url);
+      // ----------------------------------------------------
+
+      const response = await fetchWithAuth(url);
 
       if (response.ok) {
         const data = await response.json();
-        // Chama a função callback para atualizar os resultados no componente pai
+        // O JSON de retorno tem um array 'files' dentro dele
         if (onSearchResults) {
-          onSearchResults(data);
+          onSearchResults(data.files || []);
         }
       } else {
         console.error("Erro ao buscar arquivos:", response.status);
@@ -122,7 +140,7 @@ export default function Topbar({ onSearchResults }) {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <input
             type="text"
-            placeholder="Pesquisar por nome ou tags (separadas por vírgula)..."
+            placeholder="Pesquisar por nome ou tags..."
             value={searchTerm}
             onChange={handleSearchChange}
             onKeyPress={handleKeyPress}

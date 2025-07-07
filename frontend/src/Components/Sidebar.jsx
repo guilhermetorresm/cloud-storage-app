@@ -1,23 +1,27 @@
+// src/components/Sidebar.jsx
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Upload,
   LogOut,
   Image,
   Video,
-  FileText,
+  FileText, // Provavelmente não usado, mas mantido do seu código original
   Music,
   Folder,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { UploadModal } from './UploadModal';
+import UploadModal from './UploadModal';
 
-export default function Sidebar() {
+export default function Sidebar({
+  files, // Recebe a lista de arquivos do pai
+  loading, // Recebe o status de carregamento do pai
+  error, // Recebe o status de erro do pai
+  activeFilter, // Recebe o filtro ativo do pai
+  onFilterChange, // Callback para quando um filtro é clicado
+  onUploadSuccess // Callback para quando um upload é bem-sucedido
+}) {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [activeFilter, setActiveFilter] = useState('all');
-  const [files, setFiles] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
 
   const handleOpenUploadModal = () => {
     setIsUploadModalOpen(true);
@@ -36,60 +40,20 @@ export default function Sidebar() {
     navigate("/");
   };
 
-  // Função para buscar arquivos da API
-  const fetchFilesByType = async (fileType) => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const token = localStorage.getItem("access_token");
-      if (!token) {
-        setError("Token de acesso não encontrado");
-        return;
-      }
-
-      const url = fileType === 'all' 
-        ? '/api/v1/files/list' 
-        : `/api/v1/files/list?file_type=${fileType}`;
-
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Erro na requisição: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setFiles(data);
-      
-    } catch (error) {
-      console.error('Erro ao buscar arquivos:', error);
-      setError('Erro ao carregar arquivos');
-    } finally {
-      setLoading(false);
+  // Função para lidar com o clique nos filtros
+  const handleFilterClick = (filterType, fileApiType) => {
+    // Chama a função passada via props pelo componente pai
+    if (onFilterChange) {
+      onFilterChange(filterType, fileApiType);
     }
   };
 
-  // Carrega todos os arquivos ao montar o componente
-  useEffect(() => {
-    fetchFilesByType('all');
-  }, []);
-
-  // Função para lidar com o clique nos filtros
-  const handleFilterClick = (filterType, fileType) => {
-    setActiveFilter(filterType);
-    fetchFilesByType(fileType);
-  };
-
   // Função para lidar com o sucesso do upload
-  const handleUploadSuccess = () => {
-    // Recarrega os arquivos após um upload bem-sucedido
-    fetchFilesByType(activeFilter === 'all' ? 'all' : menuItems.find(item => item.filterType === activeFilter)?.fileType);
+  const handleInternalUploadSuccess = () => {
+    handleCloseUploadModal(); // Fecha o modal
+    if (onUploadSuccess) {
+      onUploadSuccess(); // Notifica o componente pai para recarregar os arquivos
+    }
   };
 
   const menuItems = [
@@ -97,25 +61,25 @@ export default function Sidebar() {
       icon: Folder, 
       label: "Todos os arquivos", 
       filterType: 'all',
-      fileType: 'all' 
+      fileApiType: 'all' // Renomeado para evitar confusão com 'fileType' na API
     },
     { 
       icon: Image, 
       label: "Imagens", 
       filterType: 'images',
-      fileType: 'image' 
+      fileApiType: 'image' 
     },
     { 
       icon: Video, 
       label: "Vídeos", 
       filterType: 'videos',
-      fileType: 'video' 
+      fileApiType: 'video' 
     },
     { 
       icon: Music, 
       label: "Áudios", 
       filterType: 'audios',
-      fileType: 'audio' 
+      fileApiType: 'audio' 
     },
   ];
 
@@ -148,7 +112,7 @@ export default function Sidebar() {
           </div>
         )}
 
-        {menuItems.map(({ icon: Icon, label, filterType, fileType }) => (
+        {menuItems.map(({ icon: Icon, label, filterType, fileApiType }) => (
           <button
             key={label}
             className={`w-full flex items-center px-2 py-2 rounded text-left transition-colors ${
@@ -156,7 +120,7 @@ export default function Sidebar() {
                 ? 'bg-blue-100 text-blue-700 border-l-4 border-blue-500' 
                 : 'hover:bg-gray-100'
             }`}
-            onClick={() => handleFilterClick(filterType, fileType)}
+            onClick={() => handleFilterClick(filterType, fileApiType)}
           >
             <div className="flex items-center space-x-2">
               <Icon className="w-5 h-5" />
@@ -167,25 +131,26 @@ export default function Sidebar() {
 
         {/* Lista de arquivos */}
         <div className="mt-4 space-y-2">
-          {files.length > 0 && (
+          {/* A exibição da contagem de arquivos e a lista agora usam a prop 'files' */}
+          {files && files.length > 0 && (
             <div className="text-sm text-gray-600 font-medium">
               {files.length} arquivo{files.length !== 1 ? 's' : ''} encontrado{files.length !== 1 ? 's' : ''}
             </div>
           )}
           
           <div className="max-h-64 overflow-y-auto space-y-1">
-            {files.map((file, index) => (
+            {files && files.map((file, index) => (
               <div
-                key={file.id || index}
+                key={file.file_id || index} // Use file_id se disponível, é mais robusto
                 className="flex items-center space-x-2 p-2 rounded hover:bg-gray-50 cursor-pointer"
               >
                 <div className="w-4 h-4 bg-gray-300 rounded flex-shrink-0"></div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-gray-900 truncate">
-                    {file.name || file.filename || `Arquivo ${index + 1}`}
+                    {file.name || `Arquivo ${index + 1}`}
                   </div>
                   <div className="text-xs text-gray-500">
-                    {file.size && `${(file.size / 1024).toFixed(1)} KB`}
+                    {file.size_humanized || (file.size && `${(file.size / 1024).toFixed(1)} KB`)}
                   </div>
                 </div>
               </div>
@@ -209,7 +174,7 @@ export default function Sidebar() {
       <UploadModal
         isOpen={isUploadModalOpen}
         onClose={handleCloseUploadModal}
-        onUploadSuccess={handleUploadSuccess}
+        onUploadSuccess={handleInternalUploadSuccess} // Usa a função interna que chama o callback pai
       />
     </aside>
   );
