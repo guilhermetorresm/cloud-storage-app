@@ -20,6 +20,8 @@ from cloud_storage_app.application.use_cases.user.get_current_user_use_case impo
 from cloud_storage_app.application.use_cases.user.change_password_use_case import ChangePasswordUseCase
 from cloud_storage_app.application.use_cases.user.update_user_use_case import UpdateUserUseCase
 
+from cloud_storage_app.application.use_cases.files.list_user_files_use_case import ListUserFilesUseCase
+
 from cloud_storage_app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -114,6 +116,12 @@ class Container(containers.DeclarativeContainer):
     login_use_case = providers.Factory(
         LoginUseCase,
         password_service=password_service,
+        jwt_service=jwt_service
+    )
+    
+    # Casos de uso de arquivos
+    list_user_files_use_case = providers.Factory(
+        ListUserFilesUseCase,
         jwt_service=jwt_service
     )
 
