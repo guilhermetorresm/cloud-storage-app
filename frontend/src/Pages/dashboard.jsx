@@ -1,15 +1,18 @@
 import { useEffect, useState } from "react";
 import Topbar from "../Components/Topbar";
 import Sidebar from "../Components/Sidebar";
+
 import { FaBars, FaTimes } from "react-icons/fa";
 import FileCard from "../Components/fileCard";
 import { FileViewer } from "../Components/file-viewer";
 import { fetchWithAuth } from "../Utils/fetchWithAuth";
 import { useNavigate } from "react-router-dom";
 
+
 export default function Dashboard() {
   const [arquivos, setArquivos] = useState([]);
   const [menuAberto, setMenuAberto] = useState(false);
+
   const [selectedFileId, setSelectedFileId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
@@ -120,6 +123,7 @@ export default function Dashboard() {
       )}
 
       <div className="flex flex-1 overflow-hidden">
+
         <div className="hidden sm:block">
           <Sidebar />
         </div>
@@ -143,10 +147,12 @@ export default function Dashboard() {
                     file={file}
                     onClick={handleFileCardClick}
                   />
+
                 ))}
               </div>
             )}
           </div>
+
         </main>
       </div>
 
@@ -157,6 +163,7 @@ export default function Dashboard() {
           onMetadataUpdate={handleFileMetadataUpdate}
         />
       )}
+
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+
 import PropTypes from "prop-types"; // Se você estiver usando PropTypes, mantenha a importação
 
 export function Button({ children, variant = "default", size = "default", onClick, type = "button", className = "", disabled = false }) {
@@ -32,6 +33,7 @@ export function Button({ children, variant = "default", size = "default", onClic
   // Lógica para aplicar classes de desabilitado
   const disabledClasses = "bg-gray-400 text-gray-700 cursor-not-allowed opacity-50"; // Mantive sua ideia e adicionei opacity
 
+
   return (
     <button
       type={type}
@@ -41,6 +43,7 @@ export function Button({ children, variant = "default", size = "default", onClic
       className={`${baseClasses} ${
         disabled ? disabledClasses : variantClasses[variant]
       } ${sizeClasses[size]} ${className}`}
+
       disabled={disabled}
     >
       {children}
@@ -58,3 +61,4 @@ Button.propTypes = {
   className: PropTypes.string,
   disabled: PropTypes.bool,
 };
+

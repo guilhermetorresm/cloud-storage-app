@@ -1,9 +1,12 @@
 // src/components/Topbar.jsx
+
 import React, { useEffect, useState } from "react";
+
 import { Search } from "lucide-react";
 import logo from "../Assets/logo_cortada.png";
 import { useNavigate } from "react-router-dom";
 import { FaUser } from "react-icons/fa";
+
 import { fetchWithAuth } from "../Utils/fetchWithAuth";
 
 export default function Topbar({ onSearchResults }) {
@@ -88,6 +91,7 @@ export default function Topbar({ onSearchResults }) {
     }
   };
 
+
   const handleProfile = () => {
     navigate("/profileView");
   };
@@ -95,6 +99,7 @@ export default function Topbar({ onSearchResults }) {
   const handleGoDashboard = () => {
     navigate("/dashboard");
   };
+
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
@@ -115,6 +120,7 @@ export default function Topbar({ onSearchResults }) {
   return (
     <header className="bg-white shadow px-4 py-2 flex items-center justify-between border-b-2 border-gray w-full">
       {/* Logo clicável */}
+
       <div
         className="flex items-center space-x-3 cursor-pointer"
         onClick={handleGoDashboard}
@@ -170,8 +176,11 @@ export default function Topbar({ onSearchResults }) {
           ) : (
             <FaUser className="text-gray-600 text-lg" />
           )}
+
         </button>
       </div>
     </header>
   );
+
 }
+

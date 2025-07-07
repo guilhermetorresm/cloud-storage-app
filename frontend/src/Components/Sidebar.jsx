@@ -1,3 +1,4 @@
+
 // src/components/Sidebar.jsx
 "use client";
 import React, { useState } from 'react';
@@ -35,6 +36,7 @@ export default function Sidebar({
 
   const handleExit = () => {
     console.log("Clicou em sair");
+
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
     navigate("/");
@@ -160,6 +162,7 @@ export default function Sidebar({
       </div>
 
       <div>
+
         <hr className="my-4 border-gray-300" />
         <button
           onClick={handleExit}
@@ -170,6 +173,7 @@ export default function Sidebar({
         </button>
       </div>
 
+
       {/* Renderiza o UploadModal */}
       <UploadModal
         isOpen={isUploadModalOpen}
@@ -179,3 +183,4 @@ export default function Sidebar({
     </aside>
   );
 }
+

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import {
   FaUser,
@@ -8,7 +9,9 @@ import {
 } from "react-icons/fa";
 import TopbarNoSearch from "../Components/TopbarNoSearch";
 import { Link, useNavigate } from "react-router-dom";
+
 import { fetchWithAuth } from "../Utils/fetchWithAuth";
+
 
 export default function EditProfile() {
   const [name, getFirstName] = useState("");
@@ -16,7 +19,9 @@ export default function EditProfile() {
   const [username, getUsername] = useState("");
   const [email, setEmail] = useState("");
   const [description, getDescription] = useState("");
+
   const [profileImage, setProfileImage] = useState(null); // NOVO
+
 
   const navigate = useNavigate();
 
@@ -28,6 +33,7 @@ export default function EditProfile() {
           { method: "GET" },
           navigate
         );
+
 
         if (!response.ok) {
           throw new Error("Erro ao buscar perfil");
@@ -41,8 +47,10 @@ export default function EditProfile() {
         getLastName(data.last_name || "");
         getUsername(data.username || "");
         setEmail(data.email || "");
+
         getDescription(data.description || "");
         setProfileImage(data.profile_image || null); // NOVO
+
       } catch (err) {
         console.error(err);
       }
@@ -59,10 +67,13 @@ export default function EditProfile() {
     <div className="flex flex-col h-screen">
       <TopbarNoSearch />
       <div className="flex items-center justify-center h-full overflow-y-auto bg-gradient-to-r from-white to-gray-100">
+
         <div className="max-w-4xl mx-auto w-full h-auto bg-white border border-gray-300 rounded-xl shadow-md p-8 flex flex-col gap-8">
+
           <h2 className="w-full h-0.5 text-3xl font-bold mb-6 text-center">
             Informações da conta:
           </h2>
+
 
           <div className="flex flex-col md:flex-row gap-20">
             {/* Lado Esquerdo */}
@@ -79,6 +90,7 @@ export default function EditProfile() {
                 )}
               </div>
 
+
               <div className="py-6 w-full">
                 <label
                   htmlFor="descricao"
@@ -87,6 +99,7 @@ export default function EditProfile() {
                   Descrição
                 </label>
                 <div className="opacity-60">
+
                   <textarea
                     className="w-full border rounded-xl bg-gray-200 p-3 resize-none min-h-[100px] text-gray-1000 font-medium"
                     placeholder="+ Descrição"
@@ -94,12 +107,14 @@ export default function EditProfile() {
                     disabled
                   />
                 </div>
+
               </div>
             </div>
 
             {/* Lado Direito */}
             <div className="flex-1">
               <div className="flex flex-col">
+
                 <label
                   htmlFor="fullName"
                   className="text-sm text-gray-500 mb-px"
@@ -117,8 +132,10 @@ export default function EditProfile() {
                   />
                 </div>
 
+<
                 <label
                   htmlFor="lastName"
+
                   className="text-sm text-gray-500 mb-px"
                 >
                   Sobrenome
@@ -151,6 +168,7 @@ export default function EditProfile() {
                   />
                 </div>
 
+
                 <label htmlFor="email" className="text-sm text-gray-500 mb-px">
                   Email
                 </label>
@@ -164,6 +182,7 @@ export default function EditProfile() {
                   />
                 </div>
               </div>
+
 
               <div className="flex gap-4 mt-6 justify-center">
                 <button
