@@ -11,7 +11,7 @@ from sqlalchemy import (
     String, Boolean, DateTime, Text, 
     func, UUID as SQLAlchemy_UUID
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..connection import Base
 
@@ -107,6 +107,11 @@ class UserModel(Base):
         nullable=True,
         comment="Data do último login"
     )
+    
+    # Relacionamentos com arquivos
+    audio_files = relationship("AudioFileModel", back_populates="owner", cascade="all, delete-orphan")
+    image_files = relationship("ImageFileModel", back_populates="owner", cascade="all, delete-orphan")
+    video_files = relationship("VideoFileModel", back_populates="owner", cascade="all, delete-orphan")
     
     def __repr__(self) -> str:
         return f"<UserModel(id={self.id}, username={self.username}, email={self.email})>"
