@@ -1,3 +1,4 @@
+// Dashboard.jsx
 import { useEffect, useState } from "react";
 import Topbar from "../Components/Topbar";
 import Sidebar from "../Components/Sidebar";
@@ -11,99 +12,21 @@ import {
   FaTimes,
   FaImage,
 } from "react-icons/fa";
-import { FileViewer } from "../Components/file-viewer";
+import FileCard from "../Components/fileCard"; // Corrigido para 'FileCard' (F maiúsculo)
+import { FileViewer } from "../Components/file-viewer"; // Corrigido para 'file-viewer'
 import { fetchWithAuth } from "../Utils/fetchWithAuth";
 import { useNavigate } from "react-router-dom";
-
-const FileCard = ({ file, onClick }) => {
-  const getTypeColor = (type) => {
-    switch (type) {
-      case "video":
-        return "bg-blue-100 text-blue-800";
-      case "image":
-        return "bg-green-100 text-green-800";
-      case "audio":
-        return "bg-purple-100 text-purple-800";
-      case "pdf":
-        return "bg-red-100 text-red-800";
-      case "text":
-        return "bg-yellow-100 text-yellow-800";
-      case "zip":
-        return "bg-gray-100 text-gray-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const getTypeIcon = (type) => {
-    switch (type) {
-      case "video":
-        return <FaFileVideo className="text-blue-500" />;
-      case "image":
-        return <FaImage className="text-green-500" />;
-      case "audio":
-        return <FaFileAudio className="text-purple-500" />;
-      case "pdf":
-        return <FaFilePdf className="text-red-500" />;
-      case "text":
-        return <FaFileAlt className="text-yellow-500" />;
-      case "zip":
-        return <FaFileArchive className="text-gray-500" />;
-      default:
-        return <FaFileAlt className="text-gray-500" />;
-    }
-  };
-
-  return (
-    <div
-      className="relative bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer"
-      onClick={() => onClick(file)}
-    >
-      <div className="relative bg-gray-200 h-32 w-50 flex items-center justify-center">
-        {file.type === "image" && file.url ? (
-          <img
-            src={file.url}
-            alt={file.title}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="text-5xl text-gray-400">{getTypeIcon(file.type)}</div>
-        )}
-        <div
-          className={`absolute top-2 left-2 px-2 py-1 rounded-full text-xs font-semibold ${getTypeColor(
-            file.type
-          )}`}
-        >
-          {file.type}
-        </div>
-        {(file.type === "video" || file.type === "audio") && file.duration && (
-          <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
-            {file.duration}
-          </div>
-        )}
-      </div>
-      <div className="p-4">
-        <h3 className="text-base font-semibold text-gray-800 truncate mb-1">
-          {file.title}
-        </h3>
-        <div className="flex justify-between text-xs text-gray-600 mt-2">
-          {file.size && <p>{file.size}</p>}
-          {file.uploadDate && <p>{file.uploadDate}</p>}
-        </div>
-      </div>
-    </div>
-  );
-};
 
 export default function Dashboard() {
   const [arquivos, setArquivos] = useState([]);
   const [menuAberto, setMenuAberto] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
+  const [selectedFileId, setSelectedFileId] = useState(null); // Agora guarda apenas o ID
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchArquivos = async () => {
+      setIsLoading(true);
       try {
         const response = await fetchWithAuth(
           `${process.env.REACT_APP_API_URL}/api/v1/files/list`
@@ -113,36 +36,43 @@ export default function Dashboard() {
           const contentType = response.headers.get("content-type");
           if (contentType && contentType.includes("application/json")) {
             const errorData = await response.json();
-            throw new Error(errorData.message || `Erro do servidor: ${response.status}`);
-          } else {
-            const errorText = await response.text();
-            console.error("Resposta não-JSON do servidor:", errorText);
-
             if (response.status === 403 || response.status === 401) {
               localStorage.removeItem('authToken');
               navigate('/login');
               throw new Error('Sessão expirada ou acesso negado. Por favor, faça login novamente.');
             }
+            throw new Error(errorData.message || `Erro do servidor: ${response.status}`);
+          } else {
+            const errorText = await response.text();
+            console.error("Resposta não-JSON do servidor:", errorText);
             throw new Error(`Erro inesperado do servidor: ${response.status}. Resposta não é JSON.`);
           }
         }
 
         const data = await response.json();
 
-        const arquivosAdaptados = data.files.map((item) => ({
-          id: item.file_id,
-          title: item.name,
-          type: item.category,
-          url: item.thumbnail_url || null,
-          size: item.size_humanized,
-          createdAt: new Date(item.created_at),
-          uploadDate: new Date(item.created_at).toLocaleDateString("pt-BR"),
-          duration: null,
-        }));
+        const arquivosAdaptados = data.files.map((item) => {
+            // Mapeamento para o FileCard (apenas as informações da lista)
+            return {
+                id: item.file_id, // Usar file_id como id
+                title: item.name,
+                type: item.category,
+                url: item.thumbnail_url, // No FileCard, queremos a thumbnail_url para pré-visualização
+                thumbnail_url: item.thumbnail_url, // Manter o nome para consistência, se necessário
+                size: item.size,
+                size_humanized: item.size_humanized,
+                createdAt: new Date(item.created_at),
+                // uploadDate: item.created_at, // O FileCard espera uma string já formatada
+                uploadDate: new Date(item.created_at).toLocaleDateString("pt-BR"),
+                description: item.description,
+                tags: Array.isArray(item.tags) ? item.tags : (item.tags ? String(item.tags).split(',').map(tag => tag.trim()) : []),
+                // A API de listagem não tem duration_humanized, então vamos deixar nulo aqui no FileCard
+                duration: null, // Será preenchido pelo FileViewer
+                // Outros campos detalhados não vêm na lista, então não os mapeamos aqui
+            };
+        });
 
-        // **MUDANÇA AQUI:** Invertendo a ordem de sort para do mais ANTIGO para o mais NOVO
-        arquivosAdaptados.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
-
+        arquivosAdaptados.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
         setArquivos(arquivosAdaptados);
       } catch (error) {
         console.error("Erro ao carregar arquivos:", error.message);
@@ -154,14 +84,32 @@ export default function Dashboard() {
     fetchArquivos();
   }, [navigate]);
 
-  const handleFileCardClick = (file) => setSelectedFile(file);
-  const handleCloseFileViewer = () => setSelectedFile(null);
+  // handleFileCardClick agora passa apenas o ID para o FileViewer
+  const handleFileCardClick = (fileObject) => {
+    setSelectedFileId(fileObject.id); // Passa apenas o ID
+  };
+
+  const handleCloseFileViewer = () => {
+    setSelectedFileId(null); // Limpa o ID para fechar o viewer
+  };
+
+  // Essa função ainda será chamada pelo FileViewer para atualizar a lista da Dashboard
+  const handleFileMetadataUpdate = (fileId, updatedMetadata) => {
+    setArquivos(prevArquivos =>
+      prevArquivos.map(arquivo =>
+        arquivo.id === fileId ? { ...arquivo, ...updatedMetadata } : arquivo
+      )
+    );
+    // Se o file viewer estiver aberto e for o mesmo arquivo, atualize-o localmente também.
+    // selectedFileId não é um objeto, então não podemos fazer setSelectedFileId(prev => ({ ...prev, ...updatedMetadata }));
+    // Mas o FileViewer já tem seu próprio estado, então ele se atualiza internamente.
+    // Não precisamos mexer no selectedFileId aqui, ele apenas indica QUAL ID está aberto.
+  };
 
   return (
     <div className="flex flex-col h-screen">
       <Topbar />
 
-      {/* Mobile menu */}
       <div className="sm:hidden flex items-center justify-between bg-white shadow p-4">
         <button
           onClick={() => setMenuAberto(true)}
@@ -171,7 +119,6 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {/* Sidebar (mobile) */}
       {menuAberto && (
         <div className="fixed inset-0 z-50 flex">
           <div className="w-64 bg-white shadow-lg p-4">
@@ -193,14 +140,13 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Main content */}
       <div className="flex flex-1 overflow-hidden">
         <div className="hidden sm:block">
           <Sidebar />
         </div>
 
         <main className="flex-1 bg-gray-100 p-4 sm:p-6 overflow-auto">
-          <div className="max-w-6xl mx-auto min-h-full flex items-center justify-center">
+          <div className="max-w-6xl mx-auto min-h-full flex flex-col items-center justify-center">
             {isLoading ? (
               <p className="text-gray-500 text-center">
                 Carregando arquivos...
@@ -212,7 +158,7 @@ export default function Dashboard() {
             ) : (
               <div
                 className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 w-full"
-                dir="rtl" // Mantido para que o fluxo do layout seja da direita para a esquerda
+                dir="rtl"
               >
                 {arquivos.map((file) => (
                   <FileCard
@@ -227,9 +173,13 @@ export default function Dashboard() {
         </main>
       </div>
 
-      {/* File Viewer */}
-      {selectedFile && (
-        <FileViewer file={selectedFile} onClose={handleCloseFileViewer} />
+      {/* FileViewer agora recebe fileId e cuidará da busca de detalhes */}
+      {selectedFileId && (
+        <FileViewer
+          fileId={selectedFileId} // <<< PASSA APENAS O ID AQUI >>>
+          onClose={handleCloseFileViewer}
+          onMetadataUpdate={handleFileMetadataUpdate}
+        />
       )}
     </div>
   );

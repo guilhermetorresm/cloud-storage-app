@@ -34,9 +34,9 @@ export default function Topbar({ onSearchResults }) {
   // Função para buscar arquivos por nome ou tags
   const searchFiles = async (searchQuery) => {
     if (!searchQuery.trim()) {
-      // Se a busca estiver vazia, você pode optar por carregar todos os arquivos
+      // Se a busca estiver vazia, retorna uma lista vazia ou todos os arquivos, dependendo do desejado
       if (onSearchResults) {
-        onSearchResults([]);
+        onSearchResults([]); // Retorna uma lista vazia para busca em branco
       }
       return;
     }
@@ -44,9 +44,29 @@ export default function Topbar({ onSearchResults }) {
     setLoading(true);
     
     try {
-      const response = await fetchWithAuth(
-        `${process.env.REACT_APP_API_URL}/api/v1/files/list?file_name=${encodeURIComponent(searchQuery)}`
-      );
+      const searchTerms = searchQuery.split(",").map((term) => term.trim()).filter(term => term !== '');
+      let url = `${process.env.REACT_APP_API_URL}/api/v1/files/list`;
+      const queryParams = [];
+
+      // Lógica para decidir se busca por nome ou por tags
+      if (searchTerms.length === 1 && !searchQuery.includes(',')) {
+        // Assume que é um nome de arquivo se for um único termo sem vírgulas
+        queryParams.push(`file_name=${encodeURIComponent(searchTerms[0])}`);
+      } else if (searchTerms.length > 0) {
+        // Se houver múltiplos termos ou um único termo com vírgula, trata como tags
+        // O backend precisará interpretar isso como uma busca "OU" para as tags
+        queryParams.push(`tags=${encodeURIComponent(searchTerms.join(','))}`);
+      }
+
+      if (queryParams.length > 0) {
+        url += `?${queryParams.join('&')}`;
+      }
+
+      // --- Adicione este console.log para depurar a URL ---
+      console.log("URL da busca enviada:", url);
+      // ----------------------------------------------------
+
+      const response = await fetchWithAuth(url);
 
       if (response.ok) {
         const data = await response.json();

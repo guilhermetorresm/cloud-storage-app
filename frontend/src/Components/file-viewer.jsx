@@ -1,13 +1,16 @@
+// Components/file-viewer.jsx
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Button } from "../Components/ui/button";
-import { Input } from "../Components/ui/input";
-import { Textarea } from "../Components/ui/textarea";
-import { Card, CardContent } from "../Components/ui/card";
-import { Badge } from "../Components/ui/badge";
-import { Dialog, DialogContent } from "../Components/ui/dialog";
-import { Separator } from "../Components/ui/separator";
+// Verifique novamente os caminhos dos seus componentes de UI
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Textarea } from "./ui/textarea";
+import { Card, CardContent } from "./ui/card";
+import { Badge } from "./ui/badge";
+import { Dialog, DialogContent } from "./ui/dialog";
+import { Separator } from "./ui/separator";
+
 import {
   X,
   Download,
@@ -33,17 +36,29 @@ const fileTypeIcons = {
   image: ImageIcon,
   video: Video,
   audio: Music,
+  pdf: FileType,
+  document: FileType,
+  text: FileType,
+  zip: FileType,
+  other: FileType,
 };
 
 const fileTypeColors = {
   image: "bg-green-500 text-green-800",
   video: "bg-blue-500 text-blue-800",
   audio: "bg-purple-500 text-purple-800",
+  pdf: "bg-red-500 text-red-800",
+  document: "bg-yellow-500 text-yellow-800",
+  text: "bg-yellow-500 text-yellow-800",
+  zip: "bg-gray-500 text-gray-800",
+  other: "bg-gray-500 text-gray-800",
 };
 
-export function FileViewer({ fileId, onClose }) {
-  const [file, setFile] = useState(null);
-  const [loading, setLoading] = useState(true);
+// --- AGORA: FileViewer recebe fileId, não o objeto 'file' completo ---
+export function FileViewer({ fileId, onClose, onMetadataUpdate }) {
+  const [file, setFile] = useState(null); // Estado para o arquivo completo (detalhes da API)
+  const [loading, setLoading] = useState(true); // Indica se está carregando os detalhes
+  const [error, setError] = useState(null); // Erros ao carregar detalhes
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -59,66 +74,109 @@ export function FileViewer({ fileId, onClose }) {
   const videoRef = useRef(null);
   const audioRef = useRef(null);
 
-  // Função para obter o access token (você precisa implementar isso de acordo com seu app)
   const getAccessToken = () => {
-    // Placeholder: Em um aplicativo real, você buscaria isso do localStorage,
-    // de um contexto global ou de um hook de autenticação.
     return localStorage.getItem("access_token");
   };
 
+  // --- useEffect para buscar os detalhes do arquivo ---
   useEffect(() => {
-    const fetchFile = async () => {
+    if (!fileId) {
+      setLoading(false);
+      setError("Nenhum ID de arquivo fornecido.");
+      return;
+    }
+
+    const fetchFileDetails = async () => {
       setLoading(true);
+      setError(null);
       try {
         const accessToken = getAccessToken();
         if (!accessToken) {
           throw new Error("Token de acesso não encontrado. Por favor, faça login.");
         }
 
-        const res = await fetch(`/api/v1/files/${fileId}`, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        });
+        // Requisição para a API de detalhes do arquivo
+        const response = await fetch(
+          `${process.env.REACT_APP_API_URL}/api/v1/files/${fileId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
+        );
 
-        // Verifica se o tipo de conteúdo é JSON antes de tentar fazer o parse
-        const contentType = res.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          const errorText = await res.text();
-          throw new Error(
-            `Resposta inesperada do servidor: ${res.status} ${res.statusText}. Conteúdo recebido: ${errorText.substring(0, 200)}...`
-          );
+        if (!response.ok) {
+          const contentType = response.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `Erro ao buscar detalhes: ${response.status}`);
+          } else {
+            const errorText = await response.text();
+            throw new Error(`Resposta inesperada do servidor ao buscar detalhes: ${response.status}. Conteúdo: ${errorText.substring(0, 200)}...`);
+          }
         }
 
-        if (!res.ok) {
-          const errorData = await res.json(); // Tenta fazer o parse como JSON se esperávamos JSON
-          throw new Error(
-            `Erro ao buscar arquivo: ${res.status} ${res.statusText} - ${errorData.message || 'Erro desconhecido.'}`
-          );
-        }
+        const data = await response.json();
+        // Console.log para depuração: veja o que vem da API de detalhes
+        console.log("Dados detalhados do arquivo:", data);
 
-        const data = await res.json();
-        setFile(data);
+        // Mapear os dados da API para o formato esperado no frontend
+        const fileData = {
+            id: data.metadata.file_id,
+            title: data.metadata.name,
+            description: data.metadata.description || "",
+            type: data.metadata.category, // 'category' é o tipo (image, video, etc.)
+            url: data.download_url, // <<< A URL PRINCIPAL PARA DOWNLOAD/VISUALIZAÇÃO ESTÁ AQUI >>>
+            thumbnail_url: data.metadata.thumbnail_url || null, // A URL da thumbnail
+            size: data.metadata.size, // Tamanho em bytes
+            size_humanized: data.metadata.size_humanized, // Tamanho formatado
+            uploadDate: new Date(data.metadata.created_at).toLocaleDateString("pt-BR"),
+            // Campos específicos de mídia/documento:
+            dimensions: data.metadata.dimensions || null, // Ex: "453x640"
+            resolution: data.metadata.dpi ? `${data.metadata.dpi} DPI` : null, // Ex: "96 DPI"
+            format: data.metadata.extension || data.metadata.mime_type || null, // Ex: "png", "image/png"
+            genre: data.metadata.genre || "", // Para áudio/vídeo
+            duration: data.metadata.duration_humanized || null, // Para áudio/vídeo
+            bitrate: data.metadata.bitrate_humanized || null, // Para áudio/vídeo
+            sampleRate: data.metadata.sample_rate_humanized || null, // Para áudio
+            pages: data.metadata.pages || null, // Para PDFs
+            tags: Array.isArray(data.metadata.tags) ? data.metadata.tags : (data.metadata.tags ? String(data.metadata.tags).split(',').map(tag => tag.trim()) : []),
+        };
+
+        setFile(fileData);
         setEditedFile({
-          title: data.title || "",
-          description: data.description || "",
-          tags: data.tags || [],
-          genre: data.genre || "",
+          title: fileData.title,
+          description: fileData.description,
+          tags: fileData.tags,
+          genre: fileData.genre,
         });
+
       } catch (err) {
-        console.error("Erro ao buscar arquivo:", err);
-        alert(`Não foi possível carregar o arquivo: ${err.message}`);
+        console.error("Erro ao buscar detalhes do arquivo:", err);
+        setError(`Não foi possível carregar os detalhes do arquivo: ${err.message}`);
+        setFile(null);
       } finally {
         setLoading(false);
       }
     };
-    fetchFile();
-  }, [fileId]);
+    fetchFileDetails();
+  }, [fileId]); // Re-executa quando o fileId muda
 
   if (loading) {
     return (
       <Dialog open={true} onOpenChange={onClose}>
-        <DialogContent className="p-6 text-center">Carregando...</DialogContent>
+        <DialogContent className="p-6 text-center">Carregando detalhes do arquivo...</DialogContent>
+      </Dialog>
+    );
+  }
+
+  if (error) {
+    return (
+      <Dialog open={true} onOpenChange={onClose}>
+        <DialogContent className="p-6 text-center text-red-500">
+          Erro: {error}
+          <Button onClick={onClose} className="mt-4">Fechar</Button>
+        </DialogContent>
       </Dialog>
     );
   }
@@ -127,13 +185,16 @@ export function FileViewer({ fileId, onClose }) {
     return (
       <Dialog open={true} onOpenChange={onClose}>
         <DialogContent className="p-6 text-center text-red-500">
-          Arquivo não encontrado
+          Arquivo não encontrado ou erro inesperado.
+          <Button onClick={onClose} className="mt-4">Fechar</Button>
         </DialogContent>
       </Dialog>
     );
   }
 
-  const IconComponent = fileTypeIcons[file.type];
+  // Agora 'file' contém todos os metadados detalhados
+  const fileToDisplay = file;
+  const IconComponent = fileTypeIcons[fileToDisplay.type] || fileTypeIcons.other;
 
   const handleSave = async () => {
     try {
@@ -142,56 +203,68 @@ export function FileViewer({ fileId, onClose }) {
         throw new Error("Token de acesso não encontrado. Por favor, faça login.");
       }
 
+      const tagsString = Array.isArray(editedFile.tags) ? editedFile.tags.join(",") : "";
+
       const payload = {
-        new_name: editedFile.title,
-        new_description: editedFile.description,
-        new_tags: editedFile.tags.join(","),
-        // Inclui o gênero no payload se aplicável
-        ...(file.type === "audio" || file.type === "video"
-          ? { new_genre: editedFile.genre }
+        name: editedFile.title, // 'name' para o backend
+        description: editedFile.description,
+        tags: tagsString,
+        ...(fileToDisplay.type === "audio" || fileToDisplay.type === "video"
+          ? { genre: editedFile.genre }
           : {}),
       };
 
-      const res = await fetch(`/api/v1/files/${fileId}/metadata`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify(payload),
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/api/v1/files/${fileToDisplay.id}/metadata`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: "Erro desconhecido." }));
+        throw new Error(errorData.message || `Erro ao salvar: ${response.status}`);
+      }
+
+      const updatedData = await response.json();
+      console.log("Resposta do PATCH:", updatedData); // Veja o que o PATCH retorna
+
+      // Atualiza o estado local do FileViewer com os dados do PATCH ou editados
+      setFile((prevFile) => ({
+        ...prevFile,
+        title: updatedData.metadata?.name || editedFile.title, // Acessa updatedData.metadata.name
+        description: updatedData.metadata?.description || editedFile.description,
+        tags: Array.isArray(updatedData.metadata?.tags) ? updatedData.metadata.tags : (updatedData.metadata?.tags ? String(updatedData.metadata.tags).split(',').map(tag => tag.trim()) : []),
+        genre: updatedData.metadata?.genre || editedFile.genre,
+        // Se o PATCH retorna a download_url completa de novo, pode atualizar também
+        url: updatedData.download_url || prevFile.url
+      }));
+
+      setEditedFile({
+        title: updatedData.metadata?.name || editedFile.title,
+        description: updatedData.metadata?.description || editedFile.description,
+        tags: Array.isArray(updatedData.metadata?.tags) ? updatedData.metadata.tags : (updatedData.metadata?.tags ? String(updatedData.metadata.tags).split(',').map(tag => tag.trim()) : []),
+        genre: updatedData.metadata?.genre || editedFile.genre,
       });
 
-      // Verifica se o tipo de conteúdo é JSON antes de tentar fazer o parse
-      const contentType = res.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        const errorText = await res.text();
-        throw new Error(
-          `Resposta inesperada do servidor ao salvar metadados: ${res.status} ${res.statusText}. Conteúdo recebido: ${errorText.substring(0, 200)}...`
-        );
+      if (onMetadataUpdate) {
+        // Envia APENAS as informações que a Dashboard precisa atualizar na lista.
+        // A Dashboard não precisa de "dimensions", "resolution" para sua lista simples.
+        onMetadataUpdate(fileToDisplay.id, {
+          title: updatedData.metadata?.name || editedFile.title,
+          description: updatedData.metadata?.description || editedFile.description,
+          tags: Array.isArray(updatedData.metadata?.tags) ? updatedData.metadata.tags : (updatedData.metadata?.tags ? String(updatedData.metadata.tags).split(',').map(tag => tag.trim()) : []),
+          genre: updatedData.metadata?.genre || editedFile.genre,
+          // Se sua Dashboard precisa da thumbnail_url ou url atualizada, inclua aqui.
+          thumbnail_url: updatedData.metadata?.thumbnail_url || fileToDisplay.thumbnail_url,
+          url: updatedData.download_url || fileToDisplay.url // Se a url de download pode mudar
+        });
       }
-
-      if (!res.ok) {
-        const errorData = await res.json(); // Tenta fazer o parse como JSON
-        throw new Error(
-          `Erro ao atualizar metadados: ${res.status} ${res.statusText} - ${errorData.message || 'Erro desconhecido.'}`
-        );
-      }
-      const updated = await res.json();
-
-      setFile((prev) => ({
-        ...prev,
-        title: updated.title || payload.new_name,
-        description: updated.description || payload.new_description,
-        tags: updated.tags || payload.new_tags.split(","),
-        genre: updated.genre || editedFile.genre,
-      }));
-      setEditedFile((prev) => ({
-        ...prev,
-        title: updated.title || prev.title,
-        description: updated.description || prev.description,
-        tags: updated.tags || prev.tags,
-        genre: updated.genre || prev.genre,
-      }));
 
       setIsEditing(false);
     } catch (err) {
@@ -218,68 +291,100 @@ export function FileViewer({ fileId, onClose }) {
   };
 
   const togglePlayPause = () => {
-    if (file.type === "video" && videoRef.current) {
+    if (fileToDisplay.type === "video" && videoRef.current) {
       isPlaying ? videoRef.current.pause() : videoRef.current.play();
-    } else if (file.type === "audio" && audioRef.current) {
+    } else if (fileToDisplay.type === "audio" && audioRef.current) {
       isPlaying ? audioRef.current.pause() : audioRef.current.play();
     }
     setIsPlaying((p) => !p);
   };
 
   const formatTime = (time) => {
-    const min = Math.floor(time / 60);
-    const sec = Math.floor(time % 60)
-      .toString()
-      .padStart(2, "0");
+    if (isNaN(time) || time < 0 || time === undefined || time === null) return "0:00";
+    // Tenta converter para número se for string
+    const numTime = typeof time === 'string' ? parseFloat(time) : time;
+    const min = Math.floor(numTime / 60);
+    const sec = Math.floor(numTime % 60).toString().padStart(2, "0");
     return `${min}:${sec}`;
   };
 
   const getMetadataFields = () => {
     const base = [
-      { icon: HardDrive, label: "Tamanho", value: file.size },
+      { icon: HardDrive, label: "Tamanho", value: fileToDisplay.size_humanized || "—" },
       {
         icon: Calendar,
         label: "Upload",
-        value: new Date(file.uploadDate).toLocaleDateString("pt-BR"),
+        value: fileToDisplay.uploadDate || "—",
       },
     ];
     const extras = {
       image: [
-        { icon: Monitor, label: "Dimensões", value: file.dimensions || "—" },
-        { icon: Monitor, label: "Resolução", value: file.resolution || "—" },
-        { icon: FileType, label: "Formato", value: file.format || "—" },
+        { icon: Monitor, label: "Dimensões", value: fileToDisplay.dimensions || "—" },
+        { icon: Monitor, label: "Resolução", value: fileToDisplay.resolution || (fileToDisplay.dpi ? `${fileToDisplay.dpi} DPI` : "—") }, // Usa DPI se resolution não vier formatada
+        { icon: FileType, label: "Formato", value: fileToDisplay.format || "—" },
+        // Adicionar outros metadados de imagem se quiser:
+        // { icon: Monitor, label: "Largura", value: fileToDisplay.width || "—" },
+        // { icon: Monitor, label: "Altura", value: fileToDisplay.height || "—" },
+        // { icon: Tag, label: "Profundidade de Cor", value: fileToDisplay.color_depth || "—" },
+        // { icon: Tag, label: "Compressão", value: fileToDisplay.compression || "—" },
+        // { icon: Camera, label: "Câmera", value: fileToDisplay.camera_make && fileToDisplay.camera_model ? `${fileToDisplay.camera_make} ${fileToDisplay.camera_model}` : "—" },
       ],
       video: [
-        { icon: Monitor, label: "Dimensões", value: file.dimensions || "—" },
-        { icon: Clock, label: "Duração", value: file.duration ? formatTime(file.duration) : "—" },
-        { icon: FileType, label: "Formato", value: file.format || "—" },
-        { icon: Tag, label: "Gênero", value: file.genre || "Não informado" },
+        { icon: Monitor, label: "Dimensões", value: fileToDisplay.dimensions || "—" },
+        { icon: Clock, label: "Duração", value: fileToDisplay.duration || "—" }, // Já deve vir formatado
+        { icon: FileType, label: "Formato", value: fileToDisplay.format || "—" },
+        { icon: Tag, label: "Gênero", value: fileToDisplay.genre || "Não informado" },
+        { icon: Music, label: "Bitrate", value: fileToDisplay.bitrate || "—" },
       ],
       audio: [
-        { icon: Clock, label: "Duração", value: file.duration ? formatTime(file.duration) : "—" },
-        { icon: Music, label: "Bitrate", value: file.bitrate || "—" },
-        { icon: Music, label: "Sample Rate", value: file.sampleRate || "—" },
-        { icon: FileType, label: "Formato", value: file.format || "—" },
-        { icon: Tag, label: "Gênero", value: file.genre || "Não informado" },
+        { icon: Clock, label: "Duração", value: fileToDisplay.duration || "—" }, // Já deve vir formatado
+        { icon: Music, label: "Bitrate", value: fileToDisplay.bitrate || "—" },
+        { icon: Music, label: "Sample Rate", value: fileToDisplay.sampleRate || "—" },
+        { icon: FileType, label: "Formato", value: fileToDisplay.format || "—" },
+        { icon: Tag, label: "Gênero", value: fileToDisplay.genre || "Não informado" },
+      ],
+      pdf: [
+        { icon: FileType, label: "Formato", value: fileToDisplay.format || "PDF" },
+        { icon: Monitor, label: "Páginas", value: fileToDisplay.pages || "—" },
+        { icon: Monitor, label: "Dimensões", value: fileToDisplay.dimensions || "—" }, // PDFs também podem ter dimensões
+      ],
+      document: [
+        { icon: FileType, label: "Formato", value: fileToDisplay.format || "Documento" },
+      ],
+      text: [
+        { icon: FileType, label: "Formato", value: fileToDisplay.format || "Texto" },
+      ],
+      zip: [
+        { icon: FileType, label: "Formato", value: fileToDisplay.format || "ZIP" },
       ],
     };
-    return [...base, ...(extras[file.type] || [])];
+    return [...base, ...(extras[fileToDisplay.type] || [])];
   };
 
   const renderMedia = () => {
-    switch (file.type) {
+    // A URL principal para visualização é fileToDisplay.url
+    if (!fileToDisplay.url) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full text-gray-500">
+          <p>URL do arquivo não disponível.</p>
+        </div>
+      );
+    }
+
+    switch (fileToDisplay.type) {
       case "image":
         return (
-          <div className="relative bg-gray-50 rounded-xl overflow-hidden h-full flex justify-center items-center">
+          <div className="relative bg-gray-50 rounded-xl overflow-hidden w-full h-full flex justify-center items-center">
             <img
-              src={file.url}
-              alt={file.title}
+              src={fileToDisplay.url} // Usa a URL principal
+              alt={fileToDisplay.title || "Imagem"}
               className="max-w-full max-h-full object-contain"
             />
             <Button
               variant="secondary"
               size="icon"
               className="absolute top-4 right-4 bg-black/20 text-white"
+              onClick={() => window.open(fileToDisplay.url, "_blank")}
             >
               <Maximize className="h-4 w-4" />
             </Button>
@@ -287,12 +392,12 @@ export function FileViewer({ fileId, onClose }) {
         );
       case "video":
         return (
-          <div className="relative bg-black rounded-xl overflow-hidden h-full">
+          <div className="relative bg-black rounded-xl overflow-hidden w-full h-full flex justify-center items-center">
             <video
               ref={videoRef}
-              src={file.url}
-              poster={file.thumbnail}
-              className="w-full h-full object-contain"
+              src={fileToDisplay.url} // Usa a URL principal para o vídeo
+              poster={fileToDisplay.thumbnail_url} // Usa a thumbnail_url para o poster
+              className="max-w-full max-h-full object-contain"
               controls
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
@@ -303,23 +408,23 @@ export function FileViewer({ fileId, onClose }) {
         );
       case "audio":
         return (
-          <div className="bg-gradient-to-br from-purple-100 to-blue-100 rounded-xl p-8 h-full flex flex-col justify-center">
+          <div className="bg-gradient-to-br from-purple-100 to-blue-100 rounded-xl p-8 w-full h-full flex flex-col justify-center items-center">
             <div className="text-center mb-6">
               <div className="w-24 h-24 bg-white rounded-full mx-auto mb-4 flex items-center justify-center shadow-lg">
                 <Music className="h-12 w-12 text-purple-600" />
               </div>
-              <h3 className="text-xl font-bold">{file.title}</h3>
+              <h3 className="text-xl font-bold">{fileToDisplay.title}</h3>
             </div>
             <audio
               ref={audioRef}
-              src={file.url}
+              src={fileToDisplay.url} // Usa a URL principal para o áudio
               className="hidden"
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
               onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
               onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
             />
-            <div className="bg-white rounded-lg p-4 shadow-sm">
+            <div className="bg-white rounded-lg p-4 shadow-sm w-full max-w-sm">
               <div className="flex items-center gap-4">
                 <Button
                   onClick={togglePlayPause}
@@ -330,7 +435,7 @@ export function FileViewer({ fileId, onClose }) {
                 <div className="flex-1">
                   <div className="flex justify-between text-sm text-gray-600 mb-1">
                     <span>{formatTime(currentTime)}</span>
-                    <span>{formatTime(duration)}</span>
+                    <span>{fileToDisplay.duration || formatTime(duration)}</span>
                   </div>
                   <div className="bg-gray-200 rounded-full h-2">
                     <div
@@ -339,26 +444,51 @@ export function FileViewer({ fileId, onClose }) {
                     />
                   </div>
                 </div>
-                <Button variant="ghost" size="icon" className="text-gray-600">
-                  <Volume2 className="h-4 w-4" />
-                </Button>
               </div>
             </div>
           </div>
         );
+      case "pdf":
+      case "document":
+      case "text":
+      case "zip":
+      case "other":
+        return (
+          <div className="flex flex-col items-center justify-center h-full text-gray-700 bg-gray-50 rounded-xl p-8">
+            <IconComponent className="h-20 w-20 text-gray-400 mb-4" />
+            <p className="text-lg font-semibold mb-2">{fileToDisplay.title}</p>
+            <p className="text-sm text-gray-500 mb-4">Pré-visualização não disponível. Faça o download para abrir.</p>
+            <a
+              href={fileToDisplay.url} // URL principal para download
+              download={fileToDisplay.title || "document"}
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background bg-blue-600 text-white hover:bg-blue-700 h-10 px-4 py-2"
+            >
+              <Download className="h-4 w-4 mr-2" /> Download
+            </a>
+          </div>
+        );
       default:
-        return null;
+        return (
+          <div className="flex flex-col items-center justify-center h-full text-gray-500">
+            <IconComponent className="h-16 w-16 mb-4" />
+            <p className="text-lg">Tipo de arquivo não suportado para visualização.</p>
+            <p className="text-sm">Por favor, faça o download para abrir.</p>
+          </div>
+        );
     }
   };
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-screen-2xl p-6 max-h-screen overflow-hidden">
-        <div className="flex justify-between items-center border-b pb-4">
+      <DialogContent
+        className="w-full max-w-[1280px] h-[720px] p-0 overflow-hidden rounded-2xl shadow-2xl flex flex-col"
+        style={{ minWidth: '900px', minHeight: '500px' }}
+      >
+        <div className="flex justify-between items-center border-b px-8 py-5">
           <div className="flex items-center gap-3">
-            <Badge className={`${fileTypeColors[file.type]} text-xs font-medium`}>
+            <Badge className={`${fileTypeColors[fileToDisplay.type] || fileTypeColors.other} text-xs font-medium`}>
               <IconComponent className="h-3 w-3 mr-1" />
-              {file.type}
+              {fileToDisplay.type || "Desconhecido"}
             </Badge>
             <div>
               {isEditing ? (
@@ -368,9 +498,9 @@ export function FileViewer({ fileId, onClose }) {
                   className="text-xl font-semibold h-8 border-0 p-0 focus:ring"
                 />
               ) : (
-                <h2 className="text-xl font-semibold">{file.title}</h2>
+                <h2 className="text-xl font-semibold">{fileToDisplay.title || "Nome do Arquivo"}</h2>
               )}
-              <p className="text-sm text-gray-600">{file.description || "Sem descrição"}</p>
+              <p className="text-sm text-gray-600">{fileToDisplay.description || "Sem descrição"}</p>
             </div>
           </div>
           <Button variant="ghost" size="icon" onClick={onClose} className="text-gray-500 hover:text-gray-700">
@@ -378,9 +508,11 @@ export function FileViewer({ fileId, onClose }) {
           </Button>
         </div>
 
-        <div className="flex h-[calc(95vh-140px)] mt-4">
-          <div className="flex-[3] p-4">{renderMedia()}</div>
-          <div className="flex-1 border-l p-4 overflow-auto">
+        <div className="flex flex-1 min-h-0">
+          <div className="flex-[3] p-8 flex items-center justify-center min-h-0">
+            {renderMedia()}
+          </div>
+          <div className="flex-1 border-l p-8 overflow-y-auto min-w-[340px]">
             <div className="flex justify-between mb-4">
               <h3 className="text-lg font-semibold">Informações do Arquivo</h3>
               <div>
@@ -403,7 +535,7 @@ export function FileViewer({ fileId, onClose }) {
               </div>
             </div>
 
-            {(file.type === "audio" || file.type === "video") && (
+            {(fileToDisplay.type === "audio" || fileToDisplay.type === "video") && (
               <div className="mb-4">
                 <label className="text-sm font-medium block mb-1">Gênero</label>
                 {isEditing ? (
@@ -414,7 +546,7 @@ export function FileViewer({ fileId, onClose }) {
                     className="h-8"
                   />
                 ) : (
-                  <p className="text-sm text-gray-600">{file.genre || "Não informado"}</p>
+                  <p className="text-sm text-gray-600">{fileToDisplay.genre || "Não informado"}</p>
                 )}
               </div>
             )}
@@ -428,7 +560,7 @@ export function FileViewer({ fileId, onClose }) {
                   className="h-20"
                 />
               ) : (
-                <p className="text-sm text-gray-600">{file.description || "Sem descrição"}</p>
+                <p className="text-sm text-gray-600">{fileToDisplay.description || "Sem descrição"}</p>
               )}
             </div>
 
@@ -438,7 +570,7 @@ export function FileViewer({ fileId, onClose }) {
                 <span className="text-sm font-medium">Tags</span>
               </div>
               <div className="flex flex-wrap gap-2 mb-2">
-                {editedFile.tags.map((tag, i) => (
+                {Array.isArray(editedFile.tags) && editedFile.tags.map((tag, i) => (
                   <Badge key={i} variant="secondary" className="text-xs flex items-center">
                     {tag}
                     {isEditing && (
@@ -468,10 +600,14 @@ export function FileViewer({ fileId, onClose }) {
             <Separator className="mb-4" />
 
             <div className="flex gap-2 mb-6">
-              <Button className="flex-1 bg-blue-600 hover:bg-blue-700">
+              <a
+                href={fileToDisplay.url}
+                download={fileToDisplay.title || "file"}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md px-4 py-2 text-sm font-medium inline-flex items-center justify-center"
+              >
                 <Download className="h-4 w-4 mr-1" />
                 Download
-              </Button>
+              </a>
               <Button variant="destructive" className="flex-1">
                 <Trash2 className="h-4 w-4 mr-1" />
                 Deletar
