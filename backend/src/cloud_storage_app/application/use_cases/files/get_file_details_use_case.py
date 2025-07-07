@@ -17,7 +17,7 @@ from cloud_storage_app.infrastructure.database.repositories import (
 )
 from cloud_storage_app.domain.value_objects.user_id import UserId
 from cloud_storage_app.domain.value_objects.file_id import FileId
-from cloud_storage_app.domain.infrastructure.storage import S3StorageService
+from cloud_storage_app.domain.services.storage_service import IStorageService
 from cloud_storage_app.infrastructure.auth.jwt_service import JWTService, TokenPayload
 from cloud_storage_app.application.dtos.file_dtos import (
     GetFileDetailsInputDTO, FileDetailsOutputDTO,
