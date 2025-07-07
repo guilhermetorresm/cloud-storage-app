@@ -6,9 +6,11 @@ import { useNavigate } from "react-router-dom";
 import { FaUser } from "react-icons/fa";
 import { fetchWithAuth } from "../Utils/fetchWithAuth";
 
-export default function Topbar() {
+export default function Topbar({ onSearchResults }) {
   const navigate = useNavigate();
   const [profileImage, setProfileImage] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     async function fetchProfileImage() {
@@ -29,12 +31,67 @@ export default function Topbar() {
     fetchProfileImage();
   }, []);
 
+  // Função para buscar arquivos por nome ou tags
+  const searchFiles = async (searchQuery) => {
+    if (!searchQuery.trim()) {
+      // Se a busca estiver vazia, você pode optar por carregar todos os arquivos
+      if (onSearchResults) {
+        onSearchResults([]);
+      }
+      return;
+    }
+
+    setLoading(true);
+    
+    try {
+      const response = await fetchWithAuth(
+        `${process.env.REACT_APP_API_URL}/api/v1/files/list?file_name=${encodeURIComponent(searchQuery)}`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        // Chama a função callback para atualizar os resultados no componente pai
+        if (onSearchResults) {
+          onSearchResults(data);
+        }
+      } else {
+        console.error("Erro ao buscar arquivos:", response.status);
+        if (onSearchResults) {
+          onSearchResults([]);
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao buscar arquivos:", error);
+      if (onSearchResults) {
+        onSearchResults([]);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleProfile = () => {
     navigate("/profileView");
   };
 
   const handleGoDashboard = () => {
     navigate("/dashboard");
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    searchFiles(searchTerm);
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      searchFiles(searchTerm);
+    }
   };
 
   return (
@@ -61,14 +118,23 @@ export default function Topbar() {
 
       {/* Barra de pesquisa */}
       <div className="flex-1 mx-4 max-w-[400px]">
-        <div className="relative w-full">
+        <form onSubmit={handleSearchSubmit} className="relative w-full">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <input
             type="text"
-            placeholder="Pesquisar arquivos..."
+            placeholder="Pesquisar por nome ou tags (separadas por vírgula)..."
+            value={searchTerm}
+            onChange={handleSearchChange}
+            onKeyPress={handleKeyPress}
             className="w-full px-9 py-1.5 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            disabled={loading}
           />
-        </div>
+          {loading && (
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+              <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          )}
+        </form>
       </div>
 
       {/* Ícone ou imagem de perfil */}
