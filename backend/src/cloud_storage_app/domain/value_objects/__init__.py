@@ -14,7 +14,7 @@ from .file_id import FileId
 from .file_name import FileName
 from .file_path import FilePath
 from .file_size import FileSize
-from .file_type import FileType
+from .file_type import FileType, FileCategory
 from .file_description import FileDescription
 from .tag import Tag
 from .video_version import VideoVersion
@@ -34,6 +34,7 @@ __all__ = [
     "FilePath",
     "FileSize",
     "FileType",
+    "FileCategory",
     "FileDescription",
     "Tag",
     "VideoVersion",

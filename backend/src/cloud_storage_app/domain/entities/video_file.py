@@ -48,7 +48,6 @@ class VideoFile(BaseFile):
                 created_with: Optional[str] = None, genre: Optional[str] = None,
                 thumbnail_path: Optional[str] = None, original_resolution: Optional[str] = None) -> "VideoFile":
         """Cria um novo arquivo de vídeo"""
-        tags_list = [Tag(tag) for tag in tags]
         
         # Criar thumbnail se fornecido
         thumbnail_entity = None
@@ -61,7 +60,7 @@ class VideoFile(BaseFile):
             path=path,
             size=size,
             description=description,
-            tags=tags_list,
+            tags=tags,
             _duration_seconds=duration_seconds,
             _width=width,
             _height=height,
@@ -377,6 +376,10 @@ class VideoFile(BaseFile):
         """Verifica se o vídeo tem versões"""
         return len(self._versions) > 0
     
+    @property
+    def genre(self) -> str:
+        return self._genre
+
     # Métodos para gerenciamento de thumbnails
     @property
     def thumbnail(self) -> Optional[FilePath]:

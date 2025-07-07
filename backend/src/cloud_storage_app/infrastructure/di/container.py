@@ -142,7 +142,8 @@ class Container(containers.DeclarativeContainer):
     # Casos de uso de arquivos
     list_user_files_use_case = providers.Factory(
         ListUserFilesUseCase,
-        jwt_service=jwt_service
+        jwt_service=jwt_service,
+        storage_service=storage_service
     )
     
     upload_file_use_case = providers.Factory(

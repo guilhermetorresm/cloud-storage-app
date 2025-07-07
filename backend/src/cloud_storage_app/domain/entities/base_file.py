@@ -69,7 +69,15 @@ class BaseFile(ABC):
         """
         file_name = FileName(name)
         file_type = FileType.from_extension(file_name.extension)
-        tags_list = [Tag(tag) for tag in tags]
+        
+        # Verificar se as tags já são objetos Tag ou strings
+        tags_list = []
+        for tag in tags:
+            if isinstance(tag, Tag):
+                tags_list.append(tag)
+            else:
+                tags_list.append(Tag(tag))
+                
         file_instance = cls(
             _file_id=FileId.generate(),
             _owner_id=owner_id,
