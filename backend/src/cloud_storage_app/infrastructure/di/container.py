@@ -30,7 +30,11 @@ from cloud_storage_app.application.use_cases.files.update_file_metadata_use_case
 
 from cloud_storage_app.application.use_cases.files.upload_file_use_case import UploadFileUseCase
 
+
 from cloud_storage_app.application.use_cases.files.delete_file_use_case import DeleteFileUseCase
+
+from cloud_storage_app.application.use_cases.files.get_file_details_use_case import GetFileDetailsUseCase
+
 
 from cloud_storage_app.config import get_settings
 
@@ -160,6 +164,7 @@ class Container(containers.DeclarativeContainer):
         jwt_service=jwt_service,
     )
 
+
     update_file_metadata_use_case = providers.Factory(
         UpdateFileMetadataUseCase,
         jwt_service=jwt_service,
@@ -169,6 +174,12 @@ class Container(containers.DeclarativeContainer):
         DeleteFileUseCase,
         jwt_service=jwt_service,
         storage_service=storage_service,
+    )
+
+    get_file_details_use_case = providers.Factory(
+        GetFileDetailsUseCase,
+        jwt_service=jwt_service,
+        storage_service=storage_service
     )
 
 # ==========================================
@@ -302,6 +313,7 @@ get_get_current_user_use_case = Provide[Container.get_current_user_use_case]
 get_change_password_use_case = Provide[Container.change_password_use_case]
 get_update_user_use_case = Provide[Container.update_user_use_case]
 get_login_use_case = Provide[Container.login_use_case]
+get_get_file_details_use_case = Provide[Container.get_file_details_use_case]
 
 # Função para obter sessão de banco (context manager)
 async def get_database_session():

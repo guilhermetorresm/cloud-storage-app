@@ -13,14 +13,17 @@ from cloud_storage_app.application.dtos.file_dtos import (
 )
 from cloud_storage_app.application.use_cases.files import (
     UploadFileUseCase, ListUserFilesUseCase, UpdateFileMetadataUseCase, DeleteFileUseCase
+    UpdateFileMetadataInputDTO, FileResponseDTO,
+    GetFileDetailsInputDTO, FileDetailsOutputDTO, GetFileDetailsUseCase
 )
+
 from cloud_storage_app.application.exceptions import (
     AuthenticationException,
     UserNotFoundException,
     ValidationException
 )
 
-from cloud_storage_app.domain.exceptions import FileValidationException, FileUploadException
+from cloud_storage_app.domain.exceptions import FileValidationException, FileUploadException, FileNotFoundException, FileAccessDeniedException
 from cloud_storage_app.infrastructure.storage.s3_storage_service import S3StorageService
 from cloud_storage_app.infrastructure.di.container import get_container, get_database_session, get_storage_service
 
@@ -53,6 +56,12 @@ def get_delete_file_use_case() -> DeleteFileUseCase:
     """Factory para obter o caso de uso de deleção de arquivo do container"""
     container = get_container()
     return container.delete_file_use_case()
+
+def get_get_file_details_use_case() -> GetFileDetailsUseCase:
+    """Factory para obter o caso de uso de detalhes do arquivo do container"""
+    container = get_container()
+    return container.get_file_details_use_case()
+
 
 def extract_bearer_token(authorization: Annotated[str, Depends(security)]) -> str:
     """
@@ -553,6 +562,211 @@ async def update_file_metadata(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro interno do servidor"
         )
+@router.get(
+    "/{file_id}",
+    response_model=FileDetailsOutputDTO,
+    status_code=status.HTTP_200_OK,
+    summary="Obter detalhes de um arquivo",
+    description="Endpoint para obter detalhes completos de um arquivo específico do usuário autenticado, incluindo URL de download",
+    responses={
+        200: {
+            "description": "Detalhes do arquivo obtidos com sucesso",
+            "model": FileDetailsOutputDTO
+        },
+        400: {
+            "description": "ID do arquivo inválido ou erro de validação",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "invalid_file_id": {
+                            "summary": "ID do arquivo inválido",
+                            "value": {
+                                "detail": "Formato de ID do arquivo inválido",
+                                "error_type": "ValidationException"
+                            }
+                        },
+                        "file_validation_error": {
+                            "summary": "Erro de validação do arquivo",
+                            "value": {
+                                "detail": "Erro ao buscar arquivo",
+                                "error_type": "FileValidationException"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        401: {
+            "description": "Token inválido, expirado ou usuário não encontrado",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "token_invalid": {
+                            "summary": "Token inválido",
+                            "value": {"detail": "Token inválido"}
+                        },
+                        "token_expired": {
+                            "summary": "Token expirado",
+                            "value": {"detail": "Token expirado"}
+                        },
+                        "user_not_found": {
+                            "summary": "Usuário não encontrado",
+                            "value": {"detail": "Usuário não encontrado"}
+                        }
+                    }
+                }
+            }
+        },
+        403: {
+            "description": "Acesso negado ao arquivo",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Acesso negado ao arquivo",
+                        "error_type": "FileAccessDeniedException"
+                    }
+                }
+            }
+        },
+        404: {
+            "description": "Arquivo não encontrado",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Arquivo não encontrado",
+                        "error_type": "FileNotFoundException"
+                    }
+                }
+            }
+        },
+        422: {
+            "description": "Dados de entrada inválidos",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "ID do arquivo é obrigatório"
+                    }
+                }
+            }
+        },
+        500: {
+            "description": "Erro interno do servidor"
+        }
+    }
+)
+async def get_file_details(
+    file_id: str,
+    access_token: str = Depends(extract_bearer_token),
+    get_file_details_use_case: GetFileDetailsUseCase = Depends(get_get_file_details_use_case),
+    db: AsyncSession = Depends(get_database_session)
+) -> FileDetailsOutputDTO:
+    """
+    Obtém detalhes completos de um arquivo específico do usuário autenticado.
+    
+    Este endpoint permite obter detalhes completos de um arquivo específico:
+    - Metadados do arquivo (nome, tamanho, tipo, etc.)
+    - URL de download temporária e pré-assinada
+    - Informações técnicas específicas do tipo de arquivo
+    - Dados de criação e última modificação
+    
+    O usuário só pode acessar arquivos que possui.
+    A URL de download é temporária e expira em 1 hora.
+    
+    Args:
+        file_id: ID do arquivo a ser consultado
+        access_token: Token de acesso extraído do cabeçalho Authorization
+        get_file_details_use_case: Caso de uso injetado para obter detalhes do arquivo
+        db: Sessão do banco de dados injetada
+        
+    Returns:
+        FileDetailsOutputDTO: Detalhes completos do arquivo com URL de download
+        
+    Raises:
+        HTTPException:
+            - 400: ID do arquivo inválido ou erro de validação
+            - 401: Token inválido, expirado ou usuário não encontrado
+            - 403: Acesso negado ao arquivo (usuário não é proprietário)
+            - 404: Arquivo não encontrado
+            - 422: Dados de entrada inválidos
+            - 500: Erro interno do servidor
+    """
+    try:
+        logger.info(f"Recebida requisição para obter detalhes do arquivo: {file_id}")
+        
+        # Criar DTO de request
+        get_details_dto = GetFileDetailsInputDTO(file_id=file_id)
+        
+        # Executar caso de uso
+        result = await get_file_details_use_case.execute(
+            request=get_details_dto,
+            access_token=access_token,
+            db_session=db
+        )
+        
+        logger.info(f"Detalhes do arquivo {file_id} obtidos com sucesso")
+        return result
+        
+    except ValidationException as e:
+        logger.warning(f"Erro de validação na obtenção de detalhes: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+            headers={"error_type": "ValidationException"}
+        )
+        
+    except FileValidationException as e:
+        logger.warning(f"Erro de validação de arquivo na obtenção de detalhes: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+            headers={"error_type": "FileValidationException"}
+        )
+        
+    except AuthenticationException as e:
+        logger.warning(f"Erro de autenticação na obtenção de detalhes: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e),
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+        
+    except UserNotFoundException as e:
+        logger.warning(f"Usuário não encontrado na obtenção de detalhes: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuário não encontrado",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+        
+    except FileAccessDeniedException as e:
+        logger.warning(f"Acesso negado ao arquivo na obtenção de detalhes: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso negado ao arquivo",
+            headers={"error_type": "FileAccessDeniedException"}
+        )
+        
+    except FileNotFoundException as e:
+        logger.warning(f"Arquivo não encontrado na obtenção de detalhes: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Arquivo não encontrado",
+            headers={"error_type": "FileNotFoundException"}
+        )
+        
+    except ValueError as e:
+        logger.error(f"Dados inválidos na obtenção de detalhes: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e)
+        )
+        
+    except Exception as e:
+        logger.error(f"Erro inesperado na obtenção de detalhes: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro interno do servidor"
+        )
 
 @router.delete(
     "/{file_id}",
@@ -647,6 +861,7 @@ async def delete_file(
         access_token: Token de acesso extraído do cabeçalho Authorization
         delete_file_use_case: Caso de uso injetado para deleção de arquivo
         db: Sessão do banco de dados injetada
+        
     Raises:
         HTTPException:
             - 400: Erro de validação ou permissão
@@ -664,6 +879,7 @@ async def delete_file(
             db_session=db
         )
         return Response(status_code=status.HTTP_204_NO_CONTENT)
+        
     except ValidationException as e:
         logger.warning(f"Erro de validação na deleção: {str(e)}")
         raise HTTPException(
@@ -671,6 +887,7 @@ async def delete_file(
             detail=str(e),
             headers={"error_type": "ValidationException"}
         )
+        
     except FileValidationException as e:
         logger.warning(f"Erro de permissão na deleção: {str(e)}")
         raise HTTPException(
@@ -678,6 +895,7 @@ async def delete_file(
             detail=str(e),
             headers={"error_type": "FileValidationException"}
         )
+        
     except AuthenticationException as e:
         logger.warning(f"Erro de autenticação na deleção: {str(e)}")
         raise HTTPException(
@@ -685,6 +903,7 @@ async def delete_file(
             detail=str(e),
             headers={"WWW-Authenticate": "Bearer"}
         )
+        
     except UserNotFoundException as e:
         logger.warning(f"Usuário não encontrado na deleção: {str(e)}")
         raise HTTPException(
@@ -692,6 +911,7 @@ async def delete_file(
             detail="Usuário não encontrado",
             headers={"WWW-Authenticate": "Bearer"}
         )
+        
     except FileNotFoundException as e:
         logger.warning(f"Arquivo não encontrado na deleção: {str(e)}")
         raise HTTPException(
@@ -699,12 +919,14 @@ async def delete_file(
             detail="Arquivo não encontrado",
             headers={"error_type": "FileNotFoundException"}
         )
+        
     except ValueError as e:
         logger.error(f"Dados inválidos na deleção: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(e)
         )
+        
     except Exception as e:
         logger.error(f"Erro inesperado na deleção: {str(e)}")
         raise HTTPException(
