@@ -45,6 +45,9 @@ from cloud_storage_app.infrastructure.auth import (
     JWTException
 )
 
+from cloud_storage_app.domain.services.storage_service import IStorageService
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -65,8 +68,10 @@ class ListUserFilesUseCase:
     def __init__(
         self,
         jwt_service: JWTService,
+        storage_service: IStorageService = Provide["storage_service"],
     ):
         self._jwt_service = jwt_service
+        self._storage_service = storage_service
         self._db_session = None  # Será definida no execute()
         self._user_repository = None  # Será criada no execute()
         self._audio_repository = None  # Será criada no execute()
@@ -332,8 +337,8 @@ class ListUserFilesUseCase:
             # 4. Aplicar paginação
             paginated_result = self._apply_pagination(filtered_files, request)
             
-            # 5. Converter para DTOs
-            file_dtos = [self._entity_to_dto(file_entity) for file_entity in paginated_result['files']]
+            # 5. Converter para DTOs com URLs assinadas
+            file_dtos = await self._convert_entities_to_dtos_with_signed_urls(paginated_result['files'])
             
             logger.info(f"Retornando {len(file_dtos)} arquivos da página {request.page}")
             
@@ -460,7 +465,93 @@ class ListUserFilesUseCase:
             FileValidationException: Se houver erro na conversão
         """
         try:
-            return entity_to_file_response_dto(file_entity)
+            # Converter para DTO base
+            file_dto = entity_to_file_response_dto(file_entity)
+            
+            # Gerar URL assinada para thumbnail se existir
+            if file_dto.has_thumbnail and file_dto.thumbnail_url:
+                try:
+                    # Importar FilePath aqui para evitar import circular
+                    from cloud_storage_app.domain.value_objects import FilePath
+                    
+                    # Criar FilePath a partir da URL do thumbnail
+                    thumbnail_path = FilePath(file_dto.thumbnail_url)
+                    
+                    # Gerar URL assinada (assíncrono, mas estamos em contexto síncrono)
+                    # Vamos usar uma abordagem diferente - gerar a URL no método que chama este
+                    # Por enquanto, vamos manter o path original e adicionar um campo para indicar que precisa de URL assinada
+                    file_dto.thumbnail_url = file_dto.thumbnail_url  # Mantém o path por enquanto
+                    
+                except Exception as e:
+                    logger.warning(f"Erro ao processar thumbnail para arquivo {file_dto.file_id}: {str(e)}")
+                    file_dto.thumbnail_url = None
+                    file_dto.has_thumbnail = False
+            
+            return file_dto
+            
         except Exception as e:
             logger.error(f"Erro ao converter arquivo para DTO: {str(e)}")
             raise FileValidationException("Erro ao processar dados do arquivo") from e
+
+    async def _generate_signed_thumbnail_url(self, thumbnail_path: str) -> Optional[str]:
+        """
+        Gera URL assinada para thumbnail.
+        
+        Args:
+            thumbnail_path: Caminho do thumbnail no bucket
+            
+        Returns:
+            Optional[str]: URL assinada ou None se houver erro
+        """
+        try:
+            from cloud_storage_app.domain.value_objects import FilePath
+            
+            file_path = FilePath(thumbnail_path)
+            signed_url = await self._storage_service.get_presigned_url(file_path, expiration=3600)
+            
+            if signed_url:
+                logger.debug(f"URL assinada gerada para thumbnail: {thumbnail_path}")
+                return signed_url
+            else:
+                logger.warning(f"Não foi possível gerar URL assinada para thumbnail: {thumbnail_path}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Erro ao gerar URL assinada para thumbnail {thumbnail_path}: {str(e)}")
+            return None
+
+    async def _convert_entities_to_dtos_with_signed_urls(self, file_entities: List) -> List[FileResponseDTO]:
+        """
+        Converte entidades para DTOs e gera URLs assinadas para thumbnails.
+        
+        Args:
+            file_entities: Lista de entidades de arquivo
+            
+        Returns:
+            List[FileResponseDTO]: Lista de DTOs com URLs assinadas
+        """
+        file_dtos = []
+        
+        for file_entity in file_entities:
+            try:
+                # Converter para DTO base
+                file_dto = entity_to_file_response_dto(file_entity)
+                
+                # Gerar URL assinada para thumbnail se existir
+                if file_dto.has_thumbnail and file_dto.thumbnail_url:
+                    signed_url = await self._generate_signed_thumbnail_url(file_dto.thumbnail_url)
+                    if signed_url:
+                        file_dto.thumbnail_url = signed_url
+                    else:
+                        # Se não conseguir gerar URL assinada, remove o thumbnail
+                        file_dto.thumbnail_url = None
+                        file_dto.has_thumbnail = False
+                
+                file_dtos.append(file_dto)
+                
+            except Exception as e:
+                logger.error(f"Erro ao converter arquivo {getattr(file_entity, 'file_id', 'unknown')} para DTO: {str(e)}")
+                # Continua com os próximos arquivos
+                continue
+        
+        return file_dtos

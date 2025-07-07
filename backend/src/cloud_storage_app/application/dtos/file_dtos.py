@@ -1,7 +1,8 @@
 from pydantic import BaseModel, Field, validator
-from typing import IO, Any, Optional, List, Dict
+from typing import IO, Any, Optional, List, Dict, Union
 from uuid import UUID
 from datetime import datetime
+from tempfile import SpooledTemporaryFile
 import re
 
 def validate_tag(tag: str) -> str:
@@ -24,7 +25,7 @@ class UploadFileInputDTO(BaseModel):
     file_name: str
     file_size: int
     mime_type: str
-    file_object: IO[Any] # O objeto do arquivo em si
+    file_object: Union[IO[Any], SpooledTemporaryFile] # O objeto do arquivo em si
     description: Optional[str] = Field(None, min_length=1, max_length=500)
     tags: Optional[List[str]] = Field(default_factory=list) # Lista de tags opcional
 
@@ -289,7 +290,9 @@ def entity_to_file_response_dto(file_entity) -> FileResponseDTO:
         is_deleted=file_entity.is_deleted,
         created_at=file_entity.created_at,
         updated_at=file_entity.updated_at,
-        last_accessed_at=file_entity.last_accessed_at
+        last_accessed_at=file_entity.last_accessed_at,
+        thumbnail_url=file_entity.thumbnail.value if hasattr(file_entity, 'thumbnail') and file_entity.thumbnail else None,
+        has_thumbnail=hasattr(file_entity, 'thumbnail') and file_entity.thumbnail is not None
     )
 
 
@@ -313,9 +316,7 @@ def image_entity_to_dto(image_entity) -> ImageFileOutputDTO:
         taken_at=image_entity.taken_at,
         gps_latitude=image_entity.gps_latitude,
         gps_longitude=image_entity.gps_longitude,
-        has_gps_data=image_entity.has_gps_data,
-        thumbnail_path=image_entity.thumbnail.value if image_entity.thumbnail else None,
-        has_thumbnail=image_entity.has_thumbnail
+        has_gps_data=image_entity.has_gps_data
     )
 
 
@@ -366,8 +367,7 @@ def video_entity_to_dto(video_entity) -> VideoFileOutputDTO:
         has_subtitles=video_entity.has_subtitles,
         created_with=video_entity.created_with,
         genre=video_entity.genre,
-        thumbnail_path=video_entity.thumbnail.value if video_entity.thumbnail else None,
-        has_thumbnail=video_entity.has_thumbnail,
+
         versions_count=video_entity.versions_count,
         has_versions=video_entity.has_versions,
         original_version=video_entity._original_version,

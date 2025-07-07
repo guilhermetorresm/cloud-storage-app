@@ -32,14 +32,13 @@ class AudioFile(BaseFile):
                bitrate: Optional[int] = None, sample_rate: Optional[int] = None,
                channels: Optional[int] = None, genre: Optional[str] = None) -> "AudioFile":
         """Cria um novo arquivo de áudio"""
-        tags_list = [Tag(tag) for tag in tags]
         return super().create(
             owner_id=owner_id,
             name=name,
             path=path,
             size=size,
             description=description,
-            tags=tags_list,
+            tags=tags,
             _duration_seconds=duration_seconds,
             _bitrate=bitrate,
             _sample_rate=sample_rate,

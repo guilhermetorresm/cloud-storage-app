@@ -13,9 +13,9 @@ class FileCreated(DomainEvent):
     file_type: FileType = None
     occurred_at: datetime = None
     
-    @property
-    def event_type(self) -> str:
-        return "file.created"
+    def __post_init__(self):
+        super().__post_init__()
+        self.event_type = "file.created"
     
     @property
     def aggregate_id(self) -> str:
@@ -30,9 +30,9 @@ class FileUpdated(DomainEvent):
     change_description: str = None
     occurred_at: datetime = None
     
-    @property
-    def event_type(self) -> str:
-        return "file.updated"
+    def __post_init__(self):
+        super().__post_init__()
+        self.event_type = "file.updated"
     
     @property
     def aggregate_id(self) -> str:
@@ -46,9 +46,9 @@ class FileDeleted(DomainEvent):
     owner_id: UserId = None
     occurred_at: datetime = None
     
-    @property
-    def event_type(self) -> str:
-        return "file.deleted"
+    def __post_init__(self):
+        super().__post_init__()
+        self.event_type = "file.deleted"
     
     @property
     def aggregate_id(self) -> str:
@@ -63,9 +63,9 @@ class FileAccessed(DomainEvent):
     access_type: str = None  # 'download', 'view', 'stream', etc.
     occurred_at: datetime = None
     
-    @property
-    def event_type(self) -> str:
-        return "file.accessed"
+    def __post_init__(self):
+        super().__post_init__()
+        self.event_type = "file.accessed"
     
     @property
     def aggregate_id(self) -> str:

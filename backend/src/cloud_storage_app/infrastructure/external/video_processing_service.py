@@ -188,7 +188,7 @@ class FFmpegVideoProcessingService(VideoProcessingService):
         frame_rate = self._calculate_frame_rate(video_stream)
         
         # Extrair codecs
-        video_codec = video_stream.get('codec_name', 'unknown')
+        codec = video_stream.get('codec_name', 'unknown')
         audio_codec = audio_stream.get('codec_name', 'unknown') if audio_stream else None
         
         # Calcular bitrate
@@ -212,26 +212,26 @@ class FFmpegVideoProcessingService(VideoProcessingService):
             'height': height,
             'frame_rate': frame_rate,
             'bitrate': bitrate,
-            'video_codec': video_codec,
+            'codec': codec,
             'audio_codec': audio_codec,
             'has_audio': has_audio,
             'has_subtitles': has_subtitles,
             'created_with': created_with,
-            'file_size': file_size,
-            'format': format_info.get('format_name', 'unknown'),
-            'streams_count': len(streams),
-            'video_stream_info': {
-                'profile': video_stream.get('profile'),
-                'level': video_stream.get('level'),
-                'pix_fmt': video_stream.get('pix_fmt'),
-                'color_space': video_stream.get('color_space'),
-                'color_range': video_stream.get('color_range')
-            },
-            'audio_stream_info': {
-                'sample_rate': audio_stream.get('sample_rate') if audio_stream else None,
-                'channels': audio_stream.get('channels') if audio_stream else None,
-                'channel_layout': audio_stream.get('channel_layout') if audio_stream else None
-            } if audio_stream else None
+            # 'file_size': file_size,
+            # 'format': format_info.get('format_name', 'unknown'),
+            # 'streams_count': len(streams),
+            # 'video_stream_info': {
+            #     'profile': video_stream.get('profile'),
+            #     'level': video_stream.get('level'),
+            #     'pix_fmt': video_stream.get('pix_fmt'),
+            #     'color_space': video_stream.get('color_space'),
+            #     'color_range': video_stream.get('color_range')
+            # },
+            # 'audio_stream_info': {
+            #     'sample_rate': audio_stream.get('sample_rate') if audio_stream else None,
+            #     'channels': audio_stream.get('channels') if audio_stream else None,
+            #     'channel_layout': audio_stream.get('channel_layout') if audio_stream else None
+            # } if audio_stream else None
         }
     
     def _calculate_frame_rate(self, video_stream: Dict[str, Any]) -> Optional[float]:
@@ -338,7 +338,7 @@ class FFmpegVideoProcessingService(VideoProcessingService):
                 'file_size': metadata.get('file_size', 0),
                 'has_audio': metadata.get('has_audio', False),
                 'has_subtitles': metadata.get('has_subtitles', False),
-                'codec': metadata.get('video_codec', 'unknown'),
+                'codec': metadata.get('codec', 'unknown'),
                 'frame_rate': metadata.get('frame_rate'),
                 'bitrate': metadata.get('bitrate', 0)
             }
