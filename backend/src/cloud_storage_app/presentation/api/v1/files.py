@@ -1,6 +1,8 @@
 import logging
-from typing import List, Annotated
+from typing import List, Annotated, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
+
 from fastapi.security import HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,9 +19,9 @@ from cloud_storage_app.application.exceptions import (
     UserNotFoundException,
     ValidationException
 )
-from cloud_storage_app.domain.exceptions import FileValidationException
-from cloud_storage_app.infrastructure.storage.s3_storage_service import S3StorageService
-from cloud_storage_app.infrastructure.di.container import get_container, get_database_session
+from cloud_storage_app.domain.exceptions import FileValidationException, FileUploadException
+
+from cloud_storage_app.infrastructure.di.container import get_container, get_database_session, get_storage_service
 from cloud_storage_app.domain.value_objects import UserId
 
 logger = logging.getLogger(__name__)
@@ -33,6 +35,11 @@ def get_list_user_files_use_case() -> ListUserFilesUseCase:
     """Factory para obter o caso de uso do container"""
     container = get_container()
     return container.list_user_files_use_case()
+
+def get_upload_file_use_case() -> UploadFileUseCase:
+    """Factory para obter o caso de uso do container"""
+    container = get_container()
+    return container.upload_file_use_case()
 
 def extract_bearer_token(authorization: Annotated[str, Depends(security)]) -> str:
     """
@@ -56,57 +63,112 @@ def extract_bearer_token(authorization: Annotated[str, Depends(security)]) -> st
     
     return authorization.credentials
 
-@router.post("/upload", response_model=FileUploadResponseDTO)
+@router.post(
+    "/upload", 
+    response_model=FileUploadResponseDTO,
+    status_code=status.HTTP_201_CREATED,
+    summary="Fazer upload de arquivo",
+    description="Endpoint para fazer upload de arquivos com processamento de mídia e geração de thumbnails",
+    responses={
+        201: {
+            "description": "Arquivo enviado com sucesso",
+            "model": FileUploadResponseDTO
+        },
+        400: {
+            "description": "Arquivo inválido ou erro de processamento",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Tipo de arquivo não suportado",
+                        "error_type": "FileValidationException"
+                    }
+                }
+            }
+        },
+        401: {
+            "description": "Token inválido, expirado ou usuário não encontrado",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "token_invalid": {
+                            "summary": "Token inválido",
+                            "value": {"detail": "Token inválido"}
+                        },
+                        "token_expired": {
+                            "summary": "Token expirado",
+                            "value": {"detail": "Token expirado"}
+                        },
+                        "user_not_found": {
+                            "summary": "Usuário não encontrado",
+                            "value": {"detail": "Usuário não encontrado"}
+                        }
+                    }
+                }
+            }
+        },
+        422: {
+            "description": "Dados de entrada inválidos",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Token de acesso é obrigatório"
+                    }
+                }
+            }
+        },
+        500: {
+            "description": "Erro interno do servidor"
+        }
+    }
+)
 async def upload_file(
-    file: UploadFile = File(...),
-    description: str = Form(None),
-    tags: str = Form(None),  # Tags como string separada por vírgulas
-    # current_user_id: str = Depends(get_current_user_id),
-    # db_session: AsyncSession = Depends(get_db_session),
-    storage_service: S3StorageService = Depends()
+    # Use Form para os metadados e File para o arquivo
+    file: UploadFile = File(..., description="O arquivo a ser enviado."),
+    description: Optional[str] = Form(None, description="Descrição do arquivo."),
+    tags: Optional[List[str]] = Form(None, description="Tags para o arquivo."),
+
+    # Injeção de dependências do container e da requisição
+    access_token: str = Depends(extract_bearer_token),
+    upload_use_case: UploadFileUseCase = Depends(get_upload_file_use_case),
+    db_session = Depends(get_database_session),
+    s3_service = Depends(get_storage_service)
 ):
     """
-    Faz upload de um arquivo com tags e descrição.
-    
-    Args:
-        file: Arquivo a ser enviado
-        description: Descrição opcional do arquivo
-        tags: Tags separadas por vírgulas (ex: "música,rock,2024")
-        current_user_id: ID do usuário autenticado
-        db_session: Sessão do banco de dados
-        storage_service: Serviço de armazenamento
-        
-    Returns:
-        FileUploadResponseDTO: Dados do arquivo criado
+    Endpoint para upload de arquivos.
+    - Recebe o arquivo e metadados via multipart/form-data.
+    - Utiliza o UploadFileUseCase para orquestrar a lógica de negócio.
+    - Trata exceções específicas e retorna os códigos HTTP apropriados.
     """
     try:
-        # Processar tags
-        tag_list = []
-        if tags:
-            tag_list = [tag.strip() for tag in tags.split(",") if tag.strip()]
-        
-        # Criar DTO
+        # Cria o DTO de entrada com os dados recebidos
         upload_dto = UploadFileInputDTO(
             file_name=file.filename,
             file_size=file.size,
             mime_type=file.content_type,
-            file_object=file.file,
+            file_object=file.file, # Passa o objeto de arquivo diretamente
             description=description,
-            tags=tag_list
+            tags=tags
         )
         
-        # Executar caso de uso
-        use_case = UploadFileUseCase()
-        owner_id = UserId.from_string(current_user_id)
-        
-        result = await use_case.execute(upload_dto, owner_id, db_session, storage_service)
-        
-        logger.info(f"Arquivo enviado com sucesso: {result.file_id}")
-        return result
-        
+        # Executa o caso de uso com as dependências da requisição
+        result_dto = await upload_use_case.execute(
+            upload_dto=upload_dto,
+            access_token=access_token,
+            db_session=db_session,
+            storage_service=s3_service
+        )
+        return result_dto
+
+    except (ValidationException, FileValidationException) as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except (AuthenticationException, UserNotFoundException) as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+    except FileUploadException as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     except Exception as e:
-        logger.error(f"Erro no upload: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
+        # Captura genérica para erros inesperados
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Ocorreu um erro inesperado: {e}")
+
 
 @router.get(
     "/list",
