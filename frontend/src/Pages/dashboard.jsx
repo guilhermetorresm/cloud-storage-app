@@ -11,46 +11,10 @@ import {
   FaTimes,
   FaImage,
 } from "react-icons/fa";
-
-// Importe o componente FileViewer
 import { FileViewer } from "../Components/file-viewer";
+import { fetchWithAuth } from "../Utils/fetchWithAuth";
+import { useNavigate } from "react-router-dom";
 
-// Mock de arquivos - ATUALIZADO com URLs de exemplo realistas e 'descricao'
-const mockArquivos = [
-  {
-    id: "1",
-    title: "Product Demo Video", 
-    type: "video", 
-    url: "https://www.learningcontainer.com/wp-content/uploads/2020/05/sample-mp4-file.mp4",
-    thumbnail: "https://via.placeholder.com/150x100?text=Video+Thumb", 
-    
-    size: "45.2 MB", 
-    uploadDate: "14/01/2024",
-    duration: "3:24", 
-    genre: "Educational", 
-    description: "Comprehensive product demonstration showcasing key features",
-    tags: ["demo", "product", "education"], 
-    resolution: "1920x1080", 
-    format: "MP4", 
-  },
- {
-    id: "2",
-    title: "Product Demo Video", 
-    type: "image", 
-    url: "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png",
-    thumbnailUrl: "https://via.placeholder.com/150x100?text=Logo+Thumb", 
-    size: "45.2 MB", 
-    uploadDate: "14/01/2024", 
-    genre: "Educational", 
-    description: "Comprehensive product demonstration showcasing key features",
-    tags: ["demo", "product", "education"],
-    resolution: "1920x1080", 
-    format: "IMG", 
-  }
-  
-];
-
-// Componente de visualização dos arquivos
 const FileCard = ({ file, onClick }) => {
   const getTypeColor = (type) => {
     switch (type) {
@@ -99,13 +63,12 @@ const FileCard = ({ file, onClick }) => {
         {file.type === "image" && file.url ? (
           <img
             src={file.url}
-            alt={file.nome}
+            alt={file.title}
             className="w-full h-full object-cover"
           />
         ) : (
           <div className="text-5xl text-gray-400">{getTypeIcon(file.type)}</div>
         )}
-
         <div
           className={`absolute top-2 left-2 px-2 py-1 rounded-full text-xs font-semibold ${getTypeColor(
             file.type
@@ -113,14 +76,12 @@ const FileCard = ({ file, onClick }) => {
         >
           {file.type}
         </div>
-
-        {(file.type === "video" || file.type === "audio") && file.duracao && (
+        {(file.type === "video" || file.type === "audio") && file.duration && (
           <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
-            {file.duracao}
+            {file.duration}
           </div>
         )}
       </div>
-
       <div className="p-4">
         <h3 className="text-base font-semibold text-gray-800 truncate mb-1">
           {file.title}
@@ -128,7 +89,6 @@ const FileCard = ({ file, onClick }) => {
         <div className="flex justify-between text-xs text-gray-600 mt-2">
           {file.size && <p>{file.size}</p>}
           {file.uploadDate && <p>{file.uploadDate}</p>}
-          
         </div>
       </div>
     </div>
@@ -138,30 +98,70 @@ const FileCard = ({ file, onClick }) => {
 export default function Dashboard() {
   const [arquivos, setArquivos] = useState([]);
   const [menuAberto, setMenuAberto] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null); // Estado para controlar o modal
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Simula o carregamento dos arquivos
-    setTimeout(() => {
-      setArquivos(mockArquivos);
-    }, 500);
-  }, []);
+    const fetchArquivos = async () => {
+      try {
+        const response = await fetchWithAuth(
+          `${process.env.REACT_APP_API_URL}/api/v1/files/list`
+        );
 
-  // Função para lidar com o clique no FileCard
-  const handleFileCardClick = (file) => {
-    setSelectedFile(file);
-  };
+        if (!response.ok) {
+          const contentType = response.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `Erro do servidor: ${response.status}`);
+          } else {
+            const errorText = await response.text();
+            console.error("Resposta não-JSON do servidor:", errorText);
 
-  // Função para fechar o modal
-  const handleCloseFileViewer = () => {
-    setSelectedFile(null);
-  };
+            if (response.status === 403 || response.status === 401) {
+              localStorage.removeItem('authToken');
+              navigate('/login');
+              throw new Error('Sessão expirada ou acesso negado. Por favor, faça login novamente.');
+            }
+            throw new Error(`Erro inesperado do servidor: ${response.status}. Resposta não é JSON.`);
+          }
+        }
+
+        const data = await response.json();
+
+        const arquivosAdaptados = data.files.map((item) => ({
+          id: item.file_id,
+          title: item.name,
+          type: item.category,
+          url: item.thumbnail_url || null,
+          size: item.size_humanized,
+          createdAt: new Date(item.created_at),
+          uploadDate: new Date(item.created_at).toLocaleDateString("pt-BR"),
+          duration: null,
+        }));
+
+        // **MUDANÇA AQUI:** Invertendo a ordem de sort para do mais ANTIGO para o mais NOVO
+        arquivosAdaptados.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+
+        setArquivos(arquivosAdaptados);
+      } catch (error) {
+        console.error("Erro ao carregar arquivos:", error.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchArquivos();
+  }, [navigate]);
+
+  const handleFileCardClick = (file) => setSelectedFile(file);
+  const handleCloseFileViewer = () => setSelectedFile(null);
 
   return (
     <div className="flex flex-col h-screen">
       <Topbar />
 
-      {/* Botão hambúrguer para mobile */}
+      {/* Mobile menu */}
       <div className="sm:hidden flex items-center justify-between bg-white shadow p-4">
         <button
           onClick={() => setMenuAberto(true)}
@@ -171,7 +171,7 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {/* Menu lateral deslizante (mobile) */}
+      {/* Sidebar (mobile) */}
       {menuAberto && (
         <div className="fixed inset-0 z-50 flex">
           <div className="w-64 bg-white shadow-lg p-4">
@@ -193,49 +193,41 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Conteúdo principal com sidebar (visível em telas maiores) */}
+      {/* Main content */}
       <div className="flex flex-1 overflow-hidden">
         <div className="hidden sm:block">
           <Sidebar />
         </div>
 
         <main className="flex-1 bg-gray-100 p-4 sm:p-6 overflow-auto">
-          <div className="max-w-6xl mx-auto">
-            {arquivos.length === 0 ? (
-              <p className="text-center">Carregando arquivos...</p>
+          <div className="max-w-6xl mx-auto min-h-full flex items-center justify-center">
+            {isLoading ? (
+              <p className="text-gray-500 text-center">
+                Carregando arquivos...
+              </p>
+            ) : arquivos.length === 0 ? (
+              <p className="text-gray-400 text-center text-lg">
+                Nenhum arquivo encontrado.
+              </p>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+              <div
+                className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 w-full"
+                dir="rtl" // Mantido para que o fluxo do layout seja da direita para a esquerda
+              >
                 {arquivos.map((file) => (
                   <FileCard
                     key={file.id}
                     file={file}
-                    onClick={handleFileCardClick} // Passa a função de clique
+                    onClick={handleFileCardClick}
                   />
                 ))}
               </div>
             )}
           </div>
-
-          {/* 
-          <div className="flex justify-center items-center mt-6 space-x-2">
-            <button className="p-2 bg-white rounded-full shadow hover:bg-gray-200">
-              <FaArrowLeft />
-            </button>
-            <div className="flex space-x-1 text-sm">
-              <span className="px-2 py-1 bg-black text-white rounded">1</span>
-              <span className="px-2 py-1">2</span>
-              <span className="px-2 py-1">3</span>
-              <span className="px-2 py-1">...</span>
-            </div>
-            <button className="p-2 bg-white rounded-full shadow hover:bg-gray-200">
-              <FaArrowRight />
-            </button>
-          </div>
-          Paginação */}
         </main>
       </div>
 
-      {/* Renderiza o FileViewer se houver um arquivo selecionado */}
+      {/* File Viewer */}
       {selectedFile && (
         <FileViewer file={selectedFile} onClose={handleCloseFileViewer} />
       )}

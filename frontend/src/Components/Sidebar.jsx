@@ -10,7 +10,7 @@ import {
   Folder,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { UploadModal } from './UploadModal';
+import  UploadModal  from './UploadModal';
 
 export default function Sidebar() {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
