@@ -6,9 +6,10 @@ import asyncio
 import subprocess
 import tempfile
 import os
+import uuid
 import json
 from typing import Dict, Any, Optional, List, Tuple, Union
-from datetime import datetime
+from datetime import datetime, date
 from pathlib import Path
 
 from ...domain.services.video_processing_interface import VideoProcessingService

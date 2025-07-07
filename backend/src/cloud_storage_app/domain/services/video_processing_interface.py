@@ -5,7 +5,7 @@ Define os contratos para extração de metadados, geração de thumbnails e proc
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, List, Tuple, Union
 from ..value_objects import VideoVersion
-from ..external.thumbnail_generator_service import ThumbnailQuality
+from .thumbnail_generator_interface import ThumbnailQuality
 
 
 class VideoProcessingService(ABC):
