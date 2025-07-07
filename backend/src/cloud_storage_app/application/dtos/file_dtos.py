@@ -61,7 +61,6 @@ class UploadFileInputDTO(BaseModel):
 
 
 class ListUserFilesInputDTO(BaseModel):
-    user_id: UUID
     page: int = Field(1, gt=0)
     page_size: int = Field(20, gt=0, le=100)
     file_type: Optional[str] = None # Filtro opcional: "image", "audio", "video"
