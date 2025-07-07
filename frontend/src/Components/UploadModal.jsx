@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Card, CardContent } from './ui/card';
 
 // Importa os ícones
-import { X, Upload, FileText, ImageIcon, Video, Music, Plus, Check, AlertCircle, Tag } from 'lucide-react'; // Certifique-se de que Trash2 está aqui!
+import { X, Upload, FileText, ImageIcon, Video, Music, Plus, Check, AlertCircle, Tag } from 'lucide-react';
 
 const fileTypeIcons = {
   image: ImageIcon,
@@ -25,8 +25,7 @@ const fileTypeColors = {
   image: 'bg-green-100 text-green-800',
   video: 'bg-blue-100 text-blue-800',
   audio: 'bg-purple-100 text-purple-800',
-  // Cor da tag de documento: use uma cor sólida para não parecer opaca
-  document: 'bg-gray-700 text-white', // Exemplo: cinza escuro sólido
+  document: 'bg-gray-700 text-white',
 };
 
 const getFileType = (file) => {
@@ -43,14 +42,27 @@ const getFileType = (file) => {
   }
 };
 
-export function UploadModal({ isOpen, onClose }) {
-  const [uploadFile, setUploadFile] = useState(null); // Apenas um arquivo por vez
-  const [isUploading, setIsUploading] = useState(false);
+// Função para converter arquivo para base64
+const convertToBase64 = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = error => reject(error);
+  });
+};
 
-  const onDrop = useCallback((acceptedFiles) => {
+export function UploadModal({ isOpen, onClose }) {
+  const [uploadFile, setUploadFile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isConverting, setIsConverting] = useState(false);
+
+  const onDrop = useCallback(async (acceptedFiles) => {
     if (acceptedFiles.length > 0) {
       const file = acceptedFiles[0];
-      setUploadFile({
+      
+      // Criar o objeto do arquivo inicial
+      const fileObject = {
         id: Math.random().toString(36).substr(2, 9),
         file,
         name: file.name.split('.')[0],
@@ -60,7 +72,29 @@ export function UploadModal({ isOpen, onClose }) {
         progress: 0,
         status: 'pending',
         preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
-      });
+        base64: null,
+      };
+
+      setUploadFile(fileObject);
+
+      // Converter para base64 em background
+      setIsConverting(true);
+      try {
+        const base64String = await convertToBase64(file);
+        setUploadFile(prev => ({
+          ...prev,
+          base64: base64String,
+          status: 'ready'
+        }));
+      } catch (error) {
+        console.error('Erro ao converter para base64:', error);
+        setUploadFile(prev => ({
+          ...prev,
+          status: 'error'
+        }));
+      } finally {
+        setIsConverting(false);
+      }
     }
   }, []);
 
@@ -114,17 +148,56 @@ export function UploadModal({ isOpen, onClose }) {
   };
 
   const simulateUpload = async () => {
-    if (!uploadFile) return;
+    if (!uploadFile || !uploadFile.base64) return;
 
     updateFile({ status: 'uploading' });
     setIsUploading(true);
 
+    // Preparar os dados para envio
+    const uploadData = {
+      name: uploadFile.name,
+      description: uploadFile.description,
+      tags: uploadFile.tags,
+      type: uploadFile.type,
+      mimeType: uploadFile.file.type,
+      size: uploadFile.file.size,
+      base64: uploadFile.base64, // String base64 completa com data URL
+    };
+
+    // Simular progresso do upload
     for (let progress = 0; progress <= 100; progress += 10) {
       await new Promise((resolve) => setTimeout(resolve, 200));
       updateFile({ progress });
     }
 
+    // Simular resposta do servidor
     const success = Math.random() > 0.1;
+    
+    if (success) {
+      // Aqui você faria a chamada real para sua API
+      console.log('Dados para envio:', uploadData);
+      
+      // Exemplo de como você poderia fazer a chamada real:
+      /*
+      try {
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(uploadData),
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          console.log('Upload bem-sucedido:', result);
+        }
+      } catch (error) {
+        console.error('Erro no upload:', error);
+      }
+      */
+    }
+
     updateFile({
       status: success ? 'completed' : 'error',
       progress: success ? 100 : 0,
@@ -137,9 +210,18 @@ export function UploadModal({ isOpen, onClose }) {
     onClose();
   };
 
+  const getStatusMessage = () => {
+    if (isConverting) return 'Convertendo arquivo...';
+    if (uploadFile?.status === 'ready') return 'Arquivo pronto para envio';
+    if (uploadFile?.status === 'uploading') return 'Enviando arquivo...';
+    if (uploadFile?.status === 'completed') return 'Upload concluído!';
+    if (uploadFile?.status === 'error') return 'Erro no processamento';
+    return 'Processando arquivo...';
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className=" max-h-[90vh] max-w-screen-2xl overflow-hidden p-0">
+      <DialogContent className="max-h-[90vh] max-w-screen-2xl overflow-hidden p-0">
         <DialogHeader className="p-6 pb-0">
           <DialogTitle className="text-xl font-semibold">Upload de Arquivos</DialogTitle>
           <Button
@@ -180,21 +262,23 @@ export function UploadModal({ isOpen, onClose }) {
                 <div className="flex gap-2">
                   <Button
                     onClick={simulateUpload}
-                    disabled={isUploading || uploadFile.status !== 'pending'}
+                    disabled={isUploading || isConverting || uploadFile.status !== 'ready'}
                     className="bg-black hover:bg-blue-700"
                   >
-                    {isUploading ? 'Enviando...' : 'Enviar'}
+                    {isUploading ? 'Enviando...' : isConverting ? 'Convertendo...' : 'Enviar'}
                   </Button>
-                  <Button variant="outline" onClick={removeFile}>
+                  <Button variant="outline" onClick={removeFile} disabled={isUploading}>
                     Remover
                   </Button>
                 </div>
+                <div className="text-sm text-gray-600">
+                  {getStatusMessage()}
+                </div>
               </div>
 
-              <Card className="border-gray-200 ">
+              <Card className="border-gray-200">
                 <CardContent className="p-10 w-full">
                   <div className="flex gap-x-6 items-start">
-        
                     <div className="flex-shrink-0">
                       {uploadFile.preview ? (
                         <img
@@ -209,23 +293,25 @@ export function UploadModal({ isOpen, onClose }) {
                       )}
                     </div>
                     <div className="flex-1 flex flex-col gap-y-3 min-w-0">
-                      <div className="flex items-start justify-between "> 
-                        {/* Esta div é o grupo "Badge + Tamanho" */}
+                      <div className="flex items-start justify-between">
                         <div className="flex items-center gap-2">
                           <Badge className={`${fileTypeColors[uploadFile.type]} px-2.5 py-0.5 rounded-full`}>
-                            {/* Ícone da Badge: h-3 w-3 é mais comum e proporcional */}
                             {React.createElement(fileTypeIcons[uploadFile.type], { className: "h-3 w-3 mr-1" })}
                             {uploadFile.type}
                           </Badge>
                           <span className="text-sm text-gray-500">
                             {(uploadFile.file.size / 1024 / 1024).toFixed(2)} MB
                           </span>
+                          {uploadFile.base64 && (
+                            <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                              Base64 ✓
+                            </span>
+                          )}
                         </div>
-                        {/* Div dos botões de status/lixeira */}
-                        <div className="flex items-center gap-2 ">
+                        <div className="flex items-center gap-2">
                           {uploadFile.status === 'completed' && <Check className="h-4 w-4 text-green-600" />}
                           {uploadFile.status === 'error' && <AlertCircle className="h-4 w-4 text-red-600" />}
-                         
+                          {isConverting && <div className="h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />}
                         </div>
                       </div>
 
@@ -235,6 +321,7 @@ export function UploadModal({ isOpen, onClose }) {
                         onChange={(e) => updateFile({ name: e.target.value })}
                         placeholder="Nome do arquivo"
                         className="h-8 px-3"
+                        disabled={isUploading}
                       />
 
                       {/* Description */}
@@ -243,6 +330,7 @@ export function UploadModal({ isOpen, onClose }) {
                         onChange={(e) => updateFile({ description: e.target.value })}
                         placeholder="Descrição (opcional)"
                         className="min-h-[60px] resize-none"
+                        disabled={isUploading}
                       />
 
                       {/* Tags */}
@@ -258,6 +346,7 @@ export function UploadModal({ isOpen, onClose }) {
                               <button
                                 onClick={() => removeTag(tag)}
                                 className="ml-1 hover:bg-gray-300 rounded-full p-0.5"
+                                disabled={isUploading}
                               >
                                 <X className="h-2 w-2" />
                               </button>
@@ -268,6 +357,7 @@ export function UploadModal({ isOpen, onClose }) {
                           <Input
                             placeholder="Nova tag..."
                             className="text-sm h-8 flex-1"
+                            disabled={isUploading}
                             onKeyPress={(e) => {
                               if (e.key === 'Enter') {
                                 addTag(e.currentTarget.value);
@@ -278,6 +368,7 @@ export function UploadModal({ isOpen, onClose }) {
                           <Button
                             size="sm"
                             variant="outline"
+                            disabled={isUploading}
                             onClick={(e) => {
                               const input = e.currentTarget.parentElement?.querySelector('input');
                               if (input?.value) {
@@ -292,20 +383,23 @@ export function UploadModal({ isOpen, onClose }) {
                       </div>
 
                       {/* Progress Bar */}
-                      {uploadFile.status === 'uploading' && (
+                      {(uploadFile.status === 'uploading' || isConverting) && (
                         <div className="space-y-1">
                           <div className="flex justify-between text-sm">
-                            <span>Enviando...</span>
-                            <span>{uploadFile.progress}%</span>
+                            <span>{isConverting ? 'Convertendo...' : 'Enviando...'}</span>
+                            {!isConverting && <span>{uploadFile.progress}%</span>}
                           </div>
-                          <Progress value={uploadFile.progress} className="h-2" />
+                          <Progress 
+                            value={isConverting ? undefined : uploadFile.progress} 
+                            className="h-2"
+                          />
                         </div>
                       )}
 
                       {uploadFile.status === 'error' && (
                         <div className="text-sm text-red-600 flex items-center gap-2">
                           <AlertCircle className="h-4 w-4" />
-                          Erro no upload. Tente novamente.
+                          Erro no processamento. Tente novamente.
                         </div>
                       )}
                     </div>

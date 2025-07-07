@@ -95,7 +95,8 @@ const FileCard = ({ file, onClick }) => {
       className="relative bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer"
       onClick={() => onClick(file)}
     >
-      <div className="relative bg-gray-200 h-32 w-50 flex items-center justify-center"> -----Tamanho da imagem         {file.type === "image" && file.url ? (
+      <div className="relative bg-gray-200 h-32 w-50 flex items-center justify-center">
+        {file.type === "image" && file.url ? (
           <img
             src={file.url}
             alt={file.nome}
