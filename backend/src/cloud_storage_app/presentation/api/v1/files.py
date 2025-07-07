@@ -1,7 +1,7 @@
 import logging
 from typing import List, Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status, Response
 
 from fastapi.security import HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,12 +9,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from cloud_storage_app.application.dtos.file_dtos import (
     UploadFileInputDTO, FileUploadResponseDTO,
     ListUserFilesInputDTO, FileListResponseDTO,
-    UpdateFileMetadataInputDTO, FileResponseDTO,
-    GetFileDetailsInputDTO, FileDetailsOutputDTO
+    UpdateFileMetadataInputDTO, FileResponseDTO, DeleteFileInputDTO
 )
 from cloud_storage_app.application.use_cases.files import (
-    UploadFileUseCase, ListUserFilesUseCase, UpdateFileMetadataUseCase, GetFileDetailsUseCase
+    UploadFileUseCase, ListUserFilesUseCase, UpdateFileMetadataUseCase, DeleteFileUseCase
+    UpdateFileMetadataInputDTO, FileResponseDTO,
+    GetFileDetailsInputDTO, FileDetailsOutputDTO, GetFileDetailsUseCase
 )
+
 from cloud_storage_app.application.exceptions import (
     AuthenticationException,
     UserNotFoundException,
@@ -26,6 +28,7 @@ from cloud_storage_app.infrastructure.storage.s3_storage_service import S3Storag
 from cloud_storage_app.infrastructure.di.container import get_container, get_database_session, get_storage_service
 
 from cloud_storage_app.domain.value_objects import UserId
+from cloud_storage_app.domain.exceptions.file_exceptions import FileNotFoundException
 
 logger = logging.getLogger(__name__)
 
@@ -49,10 +52,16 @@ def get_update_file_metadata_use_case() -> UpdateFileMetadataUseCase:
     container = get_container()
     return container.update_file_metadata_use_case()
 
+def get_delete_file_use_case() -> DeleteFileUseCase:
+    """Factory para obter o caso de uso de deleção de arquivo do container"""
+    container = get_container()
+    return container.delete_file_use_case()
+
 def get_get_file_details_use_case() -> GetFileDetailsUseCase:
     """Factory para obter o caso de uso de detalhes do arquivo do container"""
     container = get_container()
     return container.get_file_details_use_case()
+
 
 def extract_bearer_token(authorization: Annotated[str, Depends(security)]) -> str:
     """
@@ -353,7 +362,7 @@ async def list_user_files(
             detail="Erro interno do servidor"
         )
 
-@router.put(
+@router.patch(
     "/{file_id}/metadata",
     response_model=FileResponseDTO,
     status_code=status.HTTP_200_OK,
@@ -553,7 +562,6 @@ async def update_file_metadata(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro interno do servidor"
         )
-
 @router.get(
     "/{file_id}",
     response_model=FileDetailsOutputDTO,
@@ -755,6 +763,172 @@ async def get_file_details(
         
     except Exception as e:
         logger.error(f"Erro inesperado na obtenção de detalhes: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro interno do servidor"
+        )
+
+@router.delete(
+    "/{file_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Deletar arquivo do usuário",
+    description="Endpoint para deletar um arquivo do usuário autenticado",
+    responses={
+        204: {
+            "description": "Arquivo deletado com sucesso"
+        },
+        400: {
+            "description": "Erro de validação ou permissão",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "validation_error": {
+                            "summary": "Erro de validação",
+                            "value": {
+                                "detail": "ID do arquivo inválido",
+                                "error_type": "ValidationException"
+                            }
+                        },
+                        "file_validation_error": {
+                            "summary": "Erro de permissão",
+                            "value": {
+                                "detail": "Acesso negado ao arquivo",
+                                "error_type": "FileValidationException"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        401: {
+            "description": "Token inválido, expirado ou usuário não encontrado",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "token_invalid": {
+                            "summary": "Token inválido",
+                            "value": {"detail": "Token inválido"}
+                        },
+                        "token_expired": {
+                            "summary": "Token expirado",
+                            "value": {"detail": "Token expirado"}
+                        },
+                        "user_not_found": {
+                            "summary": "Usuário não encontrado",
+                            "value": {"detail": "Usuário não encontrado"}
+                        }
+                    }
+                }
+            }
+        },
+        404: {
+            "description": "Arquivo não encontrado",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Arquivo não encontrado",
+                        "error_type": "FileNotFoundException"
+                    }
+                }
+            }
+        },
+        422: {
+            "description": "Dados de entrada inválidos",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "ID do arquivo é obrigatório"
+                    }
+                }
+            }
+        },
+        500: {
+            "description": "Erro interno do servidor"
+        }
+    }
+)
+async def delete_file(
+    file_id: str,
+    access_token: str = Depends(extract_bearer_token),
+    delete_file_use_case: DeleteFileUseCase = Depends(get_delete_file_use_case),
+    db: AsyncSession = Depends(get_database_session)
+):
+    """
+    Deleta um arquivo do usuário autenticado.
+
+    Args:
+        file_id: ID do arquivo a ser deletado
+        access_token: Token de acesso extraído do cabeçalho Authorization
+        delete_file_use_case: Caso de uso injetado para deleção de arquivo
+        db: Sessão do banco de dados injetada
+        
+    Raises:
+        HTTPException:
+            - 400: Erro de validação ou permissão
+            - 401: Token inválido, expirado ou usuário não encontrado
+            - 404: Arquivo não encontrado
+            - 422: Dados de entrada inválidos
+            - 500: Erro interno do servidor
+    """
+    try:
+        logger.info(f"Recebida requisição para deletar arquivo: {file_id}")
+        delete_dto = DeleteFileInputDTO(file_id=file_id)
+        await delete_file_use_case.execute(
+            request=delete_dto,
+            access_token=access_token,
+            db_session=db
+        )
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+        
+    except ValidationException as e:
+        logger.warning(f"Erro de validação na deleção: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+            headers={"error_type": "ValidationException"}
+        )
+        
+    except FileValidationException as e:
+        logger.warning(f"Erro de permissão na deleção: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+            headers={"error_type": "FileValidationException"}
+        )
+        
+    except AuthenticationException as e:
+        logger.warning(f"Erro de autenticação na deleção: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e),
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+        
+    except UserNotFoundException as e:
+        logger.warning(f"Usuário não encontrado na deleção: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuário não encontrado",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+        
+    except FileNotFoundException as e:
+        logger.warning(f"Arquivo não encontrado na deleção: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Arquivo não encontrado",
+            headers={"error_type": "FileNotFoundException"}
+        )
+        
+    except ValueError as e:
+        logger.error(f"Dados inválidos na deleção: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e)
+        )
+        
+    except Exception as e:
+        logger.error(f"Erro inesperado na deleção: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro interno do servidor"

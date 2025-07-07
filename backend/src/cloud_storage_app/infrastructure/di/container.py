@@ -30,7 +30,11 @@ from cloud_storage_app.application.use_cases.files.update_file_metadata_use_case
 
 from cloud_storage_app.application.use_cases.files.upload_file_use_case import UploadFileUseCase
 
+
+from cloud_storage_app.application.use_cases.files.delete_file_use_case import DeleteFileUseCase
+
 from cloud_storage_app.application.use_cases.files.get_file_details_use_case import GetFileDetailsUseCase
+
 
 from cloud_storage_app.config import get_settings
 
@@ -158,6 +162,18 @@ class Container(containers.DeclarativeContainer):
         video_processing_service=video_processing_service,
         thumbnail_generator_service=thumbnail_generator_service,
         jwt_service=jwt_service,
+    )
+
+
+    update_file_metadata_use_case = providers.Factory(
+        UpdateFileMetadataUseCase,
+        jwt_service=jwt_service,
+    )
+
+    delete_file_use_case = providers.Factory(
+        DeleteFileUseCase,
+        jwt_service=jwt_service,
+        storage_service=storage_service,
     )
 
     get_file_details_use_case = providers.Factory(

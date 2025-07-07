@@ -404,7 +404,7 @@ class DeleteFileUseCase:
             repository = self._get_repository_for_entity(file_entity)
             
             # Deletar do banco de dados
-            await repository.delete(file_entity)
+            await repository.delete(file_entity.file_id)
             
             logger.debug(f"Metadados do arquivo deletados com sucesso: {file_entity.file_id}")
             
