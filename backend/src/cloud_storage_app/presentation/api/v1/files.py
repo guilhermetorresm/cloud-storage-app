@@ -9,10 +9,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from cloud_storage_app.application.dtos.file_dtos import (
     UploadFileInputDTO, FileUploadResponseDTO,
     ListUserFilesInputDTO, FileListResponseDTO,
-    UpdateFileMetadataInputDTO, FileResponseDTO
+    UpdateFileMetadataInputDTO, FileResponseDTO,
+    GetFileDetailsInputDTO, FileDetailsOutputDTO
 )
 from cloud_storage_app.application.use_cases.files import (
-    UploadFileUseCase, ListUserFilesUseCase, UpdateFileMetadataUseCase
+    UploadFileUseCase, ListUserFilesUseCase, UpdateFileMetadataUseCase, GetFileDetailsUseCase
 )
 from cloud_storage_app.application.exceptions import (
     AuthenticationException,
@@ -20,7 +21,7 @@ from cloud_storage_app.application.exceptions import (
     ValidationException
 )
 
-from cloud_storage_app.domain.exceptions import FileValidationException, FileUploadException
+from cloud_storage_app.domain.exceptions import FileValidationException, FileUploadException, FileNotFoundException, FileAccessDeniedException
 from cloud_storage_app.infrastructure.storage.s3_storage_service import S3StorageService
 from cloud_storage_app.infrastructure.di.container import get_container, get_database_session, get_storage_service
 
