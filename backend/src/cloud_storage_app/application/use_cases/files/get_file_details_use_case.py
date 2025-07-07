@@ -291,49 +291,36 @@ class GetFileDetailsUseCase:
             FileNotFoundException: Se o arquivo não for encontrado
             FileValidationException: Se houver erro na busca
         """
+        logger.debug(f"Buscando arquivo por ID: {file_id}")
+        
         try:
-            logger.debug(f"Buscando arquivo por ID: {file_id}")
-            
             file_id_vo = FileId.from_string(str(file_id))
             
-            # Buscar em todos os repositórios de forma sequencial
-            # Primeiro tenta áudio
-            try:
-                file_entity = await self._audio_repository.find_by_id(file_id_vo)
-                if file_entity:
-                    logger.debug(f"Arquivo de áudio encontrado: {file_id}")
-                    return file_entity
-            except Exception as e:
-                logger.debug(f"Arquivo não encontrado no repositório de áudio: {str(e)}")
+            repositories = [
+                self._audio_repository,
+                self._image_repository,
+                self._video_repository
+            ]
             
-            # Depois tenta imagem
-            try:
-                file_entity = await self._image_repository.find_by_id(file_id_vo)
-                if file_entity:
-                    logger.debug(f"Arquivo de imagem encontrado: {file_id}")
-                    return file_entity
-            except Exception as e:
-                logger.debug(f"Arquivo não encontrado no repositório de imagem: {str(e)}")
+            for repository in repositories:
+                try:
+                    file_entity = await repository.find_by_id(file_id_vo)
+                    if file_entity:
+                        logger.debug(f"Arquivo encontrado em: {repository.__class__.__name__}")
+                        return file_entity
+                except Exception as e:
+                    logger.debug(f"Falha ao buscar em {repository.__class__.__name__}: {e}")
             
-            # Por último tenta vídeo
-            try:
-                file_entity = await self._video_repository.find_by_id(file_id_vo)
-                if file_entity:
-                    logger.debug(f"Arquivo de vídeo encontrado: {file_id}")
-                    return file_entity
-            except Exception as e:
-                logger.debug(f"Arquivo não encontrado no repositório de vídeo: {str(e)}")
-            
-            logger.warning(f"Arquivo não encontrado em nenhum repositório para ID: {file_id}")
-            raise FileNotFoundException("Arquivo não encontrado")
-            
+            logger.warning(f"Arquivo não encontrado em nenhum repositório: {file_id}")
+            raise FileNotFoundException(f"Arquivo não encontrado: {file_id}")
+
         except FileNotFoundException:
             raise
         except ValueError as e:
-            logger.error(f"ID de arquivo inválido: {str(e)}")
+            logger.error(f"UUID inválido: {e}")
             raise ValidationException("ID de arquivo inválido") from e
         except Exception as e:
-            logger.error(f"Erro inesperado ao buscar arquivo por ID: {str(e)}")
+            logger.error(f"Erro inesperado na busca do arquivo: {e}")
             raise FileValidationException("Erro ao buscar arquivo") from e
     
     def _check_file_ownership(self, file_entity, user_id: UserId) -> None:
