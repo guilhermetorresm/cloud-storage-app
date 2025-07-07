@@ -21,17 +21,29 @@ from cloud_storage_app.application.dtos.file_dtos import (
     ListUserFilesInputDTO, FileListResponseDTO, FileResponseDTO,
     entity_to_file_response_dto
 )
+
+# Exceções da camada de aplicação
 from cloud_storage_app.application.exceptions import (
+    ApplicationException,
     AuthenticationException,
-    UserNotFoundException,
-    ValidationException
-)
-from cloud_storage_app.infrastructure.auth import (
+    ValidationException,
     InvalidTokenException,
-    ExpiredTokenException,
+    ExpiredTokenException
+)
+
+# Exceções do domínio - prioritárias
+from cloud_storage_app.domain.exceptions import (
+    UserNotFoundException,
+    UserValidationException,
+    UserInactiveException,
+    FileValidationException,
+    FileNotFoundException
+)
+
+# Exceções da infraestrutura de JWT
+from cloud_storage_app.infrastructure.auth import (
     JWTException
 )
-from cloud_storage_app.domain.exceptions import FileValidationException
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +95,8 @@ class ListUserFilesUseCase:
             AuthenticationException: Se o token for inválido, expirado ou usuário não encontrado
             ValidationException: Se os parâmetros de listagem forem inválidos
             FileValidationException: Se houver erro na busca de arquivos
+            UserNotFoundException: Se o usuário não for encontrado
+            UserInactiveException: Se o usuário estiver inativo
         """
         self._db_session = db_session
         self._user_repository = UserRepository(session=db_session)
@@ -111,13 +125,21 @@ class ListUserFilesUseCase:
             logger.info(f"Listagem de arquivos concluída para usuário: {user.username.value}")
             return file_list_response
             
-        except (AuthenticationException, UserNotFoundException, ValidationException, FileValidationException):
+        except (
+            AuthenticationException, 
+            ValidationException, 
+            UserNotFoundException, 
+            UserInactiveException, 
+            FileValidationException,
+            InvalidTokenException,
+            ExpiredTokenException
+        ):
             # Re-raise exceções conhecidas
             raise
         except Exception as e:
             logger.error(f"Erro inesperado ao listar arquivos: {str(e)}")
             logger.debug(f"Detalhes do erro: {e.__class__.__name__}: {str(e)}")
-            raise FileValidationException("Erro interno na listagem de arquivos") from e
+            raise ApplicationException("Erro interno na listagem de arquivos") from e
     
     def _validate_request(self, request: ListUserFilesInputDTO, access_token: str) -> None:
         """
@@ -144,21 +166,33 @@ class ListUserFilesUseCase:
         # Validar parâmetros de paginação
         if request.page < 1:
             logger.warning(f"Número de página inválido: {request.page}")
-            raise ValidationException("Número da página deve ser maior que 0")
+            raise ValidationException(
+                "Número da página deve ser maior que 0",
+                details={"field": "page", "value": request.page}
+            )
         
         if request.page_size < 1 or request.page_size > 100:
             logger.warning(f"Tamanho de página inválido: {request.page_size}")
-            raise ValidationException("Tamanho da página deve estar entre 1 e 100")
+            raise ValidationException(
+                "Tamanho da página deve estar entre 1 e 100",
+                details={"field": "page_size", "value": request.page_size}
+            )
         
         # Validar tipo de arquivo se especificado
         if request.file_type and request.file_type not in ['audio', 'image', 'video']:
             logger.warning(f"Tipo de arquivo inválido: {request.file_type}")
-            raise ValidationException("Tipo de arquivo deve ser 'audio', 'image' ou 'video'")
+            raise ValidationException(
+                "Tipo de arquivo deve ser 'audio', 'image' ou 'video'",
+                details={"field": "file_type", "value": request.file_type}
+            )
         
         # Validar tags se especificadas
         if request.tags and len(request.tags) > 10:
             logger.warning(f"Muitas tags especificadas: {len(request.tags)}")
-            raise ValidationException("Máximo de 10 tags permitidas para filtro")
+            raise ValidationException(
+                "Máximo de 10 tags permitidas para filtro",
+                details={"field": "tags", "value": len(request.tags)}
+            )
         
         logger.debug("Parâmetros de request validados com sucesso")
     
@@ -174,6 +208,8 @@ class ListUserFilesUseCase:
             
         Raises:
             AuthenticationException: Se o token for inválido ou expirado
+            InvalidTokenException: Se o token for inválido
+            ExpiredTokenException: Se o token estiver expirado
         """
         try:
             logger.debug("Decodificando token JWT")
@@ -184,18 +220,18 @@ class ListUserFilesUseCase:
             # Validar se é um access token
             if not self._jwt_service.validate_token_type(token_payload, "access"):
                 logger.warning("Token fornecido não é um access token")
-                raise AuthenticationException("Tipo de token inválido")
+                raise InvalidTokenException("Tipo de token inválido")
             
             logger.debug(f"Token decodificado com sucesso para usuário: {token_payload.sub}")
             return token_payload
             
         except ExpiredTokenException as e:
             logger.warning(f"Token expirado: {str(e)}")
-            raise AuthenticationException("Token expirado") from e
+            raise ExpiredTokenException("Token expirado") from e
             
         except InvalidTokenException as e:
             logger.warning(f"Token inválido: {str(e)}")
-            raise AuthenticationException("Token inválido") from e
+            raise InvalidTokenException("Token inválido") from e
             
         except JWTException as e:
             logger.error(f"Erro JWT: {str(e)}")
@@ -217,6 +253,7 @@ class ListUserFilesUseCase:
             
         Raises:
             UserNotFoundException: Se o usuário não for encontrado
+            UserValidationException: Se o ID do usuário for inválido
             AuthenticationException: Para outros erros de busca
         """
         try:
@@ -227,7 +264,7 @@ class ListUserFilesUseCase:
             
             if not user:
                 logger.warning(f"Usuário não encontrado para ID: {user_id_str}")
-                raise UserNotFoundException("Usuário não encontrado")
+                raise UserNotFoundException(user_id_str)
             
             logger.debug(f"Usuário encontrado: {user.username.value}")
             return user
@@ -236,7 +273,11 @@ class ListUserFilesUseCase:
             raise
         except ValueError as e:
             logger.error(f"ID de usuário inválido: {str(e)}")
-            raise AuthenticationException("ID de usuário inválido no token") from e
+            raise UserValidationException(
+                "ID de usuário inválido no token",
+                field="user_id",
+                value=user_id_str
+            ) from e
         except Exception as e:
             logger.error(f"Erro ao buscar usuário por ID: {str(e)}")
             raise AuthenticationException("Erro ao buscar dados do usuário") from e
@@ -249,6 +290,7 @@ class ListUserFilesUseCase:
             user: Entidade do usuário
             
         Raises:
+            UserInactiveException: Se o usuário estiver inativo
             AuthenticationException: Se o usuário não puder ser autenticado
         """
         if not user:
@@ -256,7 +298,7 @@ class ListUserFilesUseCase:
         
         if hasattr(user, 'is_active') and not user.is_active:
             logger.warning(f"Tentativa de listagem com usuário inativo: {user.username.value}")
-            raise AuthenticationException("Usuário inativo")
+            raise UserInactiveException(str(user.user_id))
         
         logger.debug(f"Status do usuário {user.username.value} verificado com sucesso")
     
@@ -318,6 +360,9 @@ class ListUserFilesUseCase:
             
         Returns:
             List: Lista de entidades de arquivo
+            
+        Raises:
+            FileValidationException: Se houver erro na busca de arquivos
         """
         all_files = []
         
@@ -410,6 +455,9 @@ class ListUserFilesUseCase:
             
         Returns:
             FileResponseDTO: DTO com dados do arquivo
+            
+        Raises:
+            FileValidationException: Se houver erro na conversão
         """
         try:
             return entity_to_file_response_dto(file_entity)

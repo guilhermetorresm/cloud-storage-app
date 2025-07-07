@@ -27,15 +27,17 @@ from cloud_storage_app.application.dtos.file_dtos import (
 from cloud_storage_app.application.exceptions import (
     AuthenticationException,
     UserNotFoundException,
-    ValidationException,
-    FileNotFoundException
+    ValidationException
 )
 from cloud_storage_app.infrastructure.auth import (
     InvalidTokenException,
     ExpiredTokenException,
     JWTException
 )
-from cloud_storage_app.domain.exceptions import FileValidationException
+from cloud_storage_app.domain.exceptions import (
+    FileNotFoundException,
+    FileValidationException
+)
 
 logger = logging.getLogger(__name__)
 
@@ -347,7 +349,7 @@ class UpdateFileMetadataUseCase:
                     logger.debug(f"Falha ao buscar em {repo_name}: {e}")
             
             logger.warning(f"Arquivo não encontrado em nenhum repositório: {file_id}")
-            raise FileNotFoundException(f"Arquivo não encontrado: {file_id}")
+            raise FileNotFoundException(str(file_id))
 
         except (FileNotFoundException, FileValidationException):
             raise

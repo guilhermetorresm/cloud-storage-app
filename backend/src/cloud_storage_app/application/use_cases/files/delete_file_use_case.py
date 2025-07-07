@@ -19,18 +19,29 @@ from cloud_storage_app.domain.value_objects.file_id import FileId
 from cloud_storage_app.domain.services.storage_service import IStorageService
 from cloud_storage_app.infrastructure.auth.jwt_service import JWTService, TokenPayload
 from cloud_storage_app.application.dtos.file_dtos import DeleteFileInputDTO
+
+# Exceções da camada de aplicação
 from cloud_storage_app.application.exceptions import (
     AuthenticationException,
-    UserNotFoundException,
     ValidationException,
-    FileNotFoundException
+    UserNotFoundException as AppUserNotFoundException,
+    AuthorizationException
 )
+
+# Exceções do domínio
+from cloud_storage_app.domain.exceptions import (
+    FileNotFoundException,
+    FileValidationException,
+    FileAccessDeniedException,
+    UserNotFoundException as DomainUserNotFoundException
+)
+
+# Exceções da infraestrutura de autenticação
 from cloud_storage_app.infrastructure.auth import (
     InvalidTokenException,
     ExpiredTokenException,
     JWTException
 )
-from cloud_storage_app.domain.exceptions import FileValidationException
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +93,8 @@ class DeleteFileUseCase:
             AuthenticationException: Se o token for inválido, expirado ou usuário não encontrado
             ValidationException: Se o ID do arquivo for inválido
             FileNotFoundException: Se o arquivo não for encontrado
-            FileValidationException: Se houver erro na busca de arquivo ou falta de permissão
+            FileAccessDeniedException: Se o usuário não tiver permissão para deletar o arquivo
+            FileValidationException: Se houver erro na busca de arquivo
         """
         self._db_session = db_session
         self._user_repository = UserRepository(session=db_session)
@@ -122,8 +134,8 @@ class DeleteFileUseCase:
             
             logger.info(f"Arquivo {request.file_id} deletado com sucesso pelo usuário: {user.username.value}")
             
-        except (AuthenticationException, UserNotFoundException, ValidationException, 
-                FileNotFoundException, FileValidationException):
+        except (AuthenticationException, AppUserNotFoundException, ValidationException, 
+                FileNotFoundException, FileValidationException, FileAccessDeniedException):
             # Rollback em caso de erro
             await db_session.rollback()
             raise
@@ -224,7 +236,7 @@ class DeleteFileUseCase:
             User: Entidade do usuário encontrado
             
         Raises:
-            UserNotFoundException: Se o usuário não for encontrado
+            AppUserNotFoundException: Se o usuário não for encontrado
             AuthenticationException: Para outros erros de busca
         """
         try:
@@ -235,12 +247,12 @@ class DeleteFileUseCase:
             
             if not user:
                 logger.warning(f"Usuário não encontrado para ID: {user_id_str}")
-                raise UserNotFoundException("Usuário não encontrado")
+                raise AppUserNotFoundException("Usuário não encontrado")
             
             logger.debug(f"Usuário encontrado: {user.username.value}")
             return user
             
-        except UserNotFoundException:
+        except AppUserNotFoundException:
             raise
         except ValueError as e:
             logger.error(f"ID de usuário inválido: {str(e)}")
@@ -304,7 +316,7 @@ class DeleteFileUseCase:
                     logger.debug(f"Erro ao buscar no repositório de {nome}: {e}")
 
             logger.warning(f"Arquivo não encontrado em nenhum repositório: {file_id}")
-            raise FileNotFoundException("Arquivo não encontrado")
+            raise FileNotFoundException(str(file_id))
 
         except FileNotFoundException:
             raise
@@ -324,19 +336,20 @@ class DeleteFileUseCase:
             user_id: ID do usuário
             
         Raises:
-            FileValidationException: Se o usuário não for proprietário
+            FileAccessDeniedException: Se o usuário não for proprietário
+            FileNotFoundException: Se o arquivo estiver marcado como excluído
         """
         if not file_entity:
             raise FileValidationException("Arquivo inválido")
         
         if file_entity.owner_id != user_id:
             logger.warning(f"Tentativa de deleção de arquivo sem permissão. Usuário: {user_id}, Arquivo: {file_entity.file_id}")
-            raise FileValidationException("Acesso negado ao arquivo")
+            raise FileAccessDeniedException(str(file_entity.file_id), str(user_id))
         
         # Verificar se o arquivo não está já excluído
         if hasattr(file_entity, 'is_deleted') and file_entity.is_deleted:
             logger.warning(f"Tentativa de deleção de arquivo já excluído: {file_entity.file_id}")
-            raise FileNotFoundException("Arquivo não encontrado")
+            raise FileNotFoundException(str(file_entity.file_id))
         
         logger.debug(f"Verificação de propriedade bem-sucedida para arquivo: {file_entity.file_id}")
     
