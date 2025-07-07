@@ -17,7 +17,10 @@ from cloud_storage_app.application.exceptions import (
     UserNotFoundException,
     ValidationException
 )
-from cloud_storage_app.domain.exceptions import FileValidationException
+from cloud_storage_app.domain.exceptions import (
+    FileValidationException,
+    FileNotFoundException
+)
 from cloud_storage_app.infrastructure.storage.s3_storage_service import S3StorageService
 from cloud_storage_app.infrastructure.di.container import get_container, get_database_session
 from cloud_storage_app.domain.value_objects import UserId
@@ -278,52 +281,210 @@ async def list_user_files(
             detail="Erro interno do servidor"
         )
 
-@router.put("/{file_id}/metadata", response_model=FileResponseDTO)
+@router.put(
+    "/{file_id}/metadata",
+    response_model=FileResponseDTO,
+    status_code=status.HTTP_200_OK,
+    summary="Atualizar metadados de arquivo",
+    description="Endpoint para atualizar metadados (nome, descrição, tags) de um arquivo do usuário autenticado",
+    responses={
+        200: {
+            "description": "Metadados atualizados com sucesso",
+            "model": FileResponseDTO
+        },
+        400: {
+            "description": "Dados de entrada inválidos ou erro de validação",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "validation_error": {
+                            "summary": "Erro de validação",
+                            "value": {
+                                "detail": "Nome de arquivo inválido: Nome não pode estar vazio",
+                                "error_type": "ValidationException"
+                            }
+                        },
+                        "file_validation_error": {
+                            "summary": "Erro de validação do arquivo",
+                            "value": {
+                                "detail": "Acesso negado ao arquivo",
+                                "error_type": "FileValidationException"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        401: {
+            "description": "Token inválido, expirado ou usuário não encontrado",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "token_invalid": {
+                            "summary": "Token inválido",
+                            "value": {"detail": "Token inválido"}
+                        },
+                        "token_expired": {
+                            "summary": "Token expirado",
+                            "value": {"detail": "Token expirado"}
+                        },
+                        "user_not_found": {
+                            "summary": "Usuário não encontrado",
+                            "value": {"detail": "Usuário não encontrado"}
+                        }
+                    }
+                }
+            }
+        },
+        404: {
+            "description": "Arquivo não encontrado",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Arquivo não encontrado",
+                        "error_type": "FileNotFoundException"
+                    }
+                }
+            }
+        },
+        422: {
+            "description": "Dados de entrada inválidos",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "ID do arquivo é obrigatório"
+                    }
+                }
+            }
+        },
+        500: {
+            "description": "Erro interno do servidor"
+        }
+    }
+)
 async def update_file_metadata(
     file_id: str,
-    new_name: str = None,
-    new_description: str = None,
-    new_tags: str = None  # Tags separadas por vírgulas
-    # current_user_id: str = Depends(get_current_user_id),
-    # db_session: AsyncSession = Depends(get_db_session)
-):
+    new_name: str = Form(None),
+    new_description: str = Form(None),
+    new_tags: str = Form(None),  # Tags separadas por vírgulas
+    access_token: str = Depends(extract_bearer_token),
+    update_file_metadata_use_case: UpdateFileMetadataUseCase = Depends(get_update_file_metadata_use_case),
+    db: AsyncSession = Depends(get_database_session)
+) -> FileResponseDTO:
     """
-    Atualiza metadados de um arquivo.
+    Atualiza metadados de um arquivo do usuário autenticado.
+    
+    Este endpoint permite atualizar metadados de um arquivo específico:
+    - Nome do arquivo
+    - Descrição do arquivo
+    - Tags do arquivo
+    
+    Pelo menos um dos campos deve ser fornecido para atualização.
+    O usuário só pode atualizar arquivos que possui.
     
     Args:
-        file_id: ID do arquivo
-        new_name: Novo nome do arquivo
-        new_description: Nova descrição
-        new_tags: Novas tags separadas por vírgulas
-        current_user_id: ID do usuário autenticado
-        db_session: Sessão do banco de dados
+        file_id: ID do arquivo a ser atualizado
+        new_name: Novo nome do arquivo (opcional)
+        new_description: Nova descrição do arquivo (opcional)
+        new_tags: Novas tags separadas por vírgulas (opcional)
+        access_token: Token de acesso extraído do cabeçalho Authorization
+        update_file_metadata_use_case: Caso de uso injetado para atualização de metadados
+        db: Sessão do banco de dados injetada
         
     Returns:
         FileResponseDTO: Dados atualizados do arquivo
+        
+    Raises:
+        HTTPException:
+            - 400: Dados de entrada inválidos ou erro de validação
+            - 401: Token inválido, expirado ou usuário não encontrado
+            - 404: Arquivo não encontrado
+            - 422: Dados de entrada inválidos
+            - 500: Erro interno do servidor
     """
     try:
+        logger.info(f"Recebida requisição para atualizar metadados do arquivo: {file_id}")
+        
         # Processar tags
         tag_list = []
         if new_tags:
             tag_list = [tag.strip() for tag in new_tags.split(",") if tag.strip()]
         
-        # Criar DTO
+        # Criar DTO de request
         update_dto = UpdateFileMetadataInputDTO(
             file_id=file_id,
             new_name=new_name,
             new_description=new_description,
-            new_tags=tag_list
+            new_tags=tag_list if tag_list else None
         )
         
         # Executar caso de uso
-        use_case = UpdateFileMetadataUseCase()
-        owner_id = UserId.from_string(current_user_id)
+        result = await update_file_metadata_use_case.execute(
+            request=update_dto,
+            access_token=access_token,
+            db_session=db
+        )
         
-        result = await use_case.execute(update_dto, owner_id, db_session)
-        
-        logger.info(f"Metadados atualizados com sucesso: {file_id}")
+        logger.info(f"Metadados do arquivo {file_id} atualizados com sucesso")
         return result
         
+    except ValidationException as e:
+        logger.warning(f"Erro de validação na atualização: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+            headers={"error_type": "ValidationException"}
+        )
+        
+    except FileValidationException as e:
+        logger.warning(f"Erro de validação de arquivo na atualização: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+            headers={"error_type": "FileValidationException"}
+        )
+        
+    except AuthenticationException as e:
+        logger.warning(f"Erro de autenticação na atualização: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e),
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+        
+    except UserNotFoundException as e:
+        logger.warning(f"Usuário não encontrado na atualização: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuário não encontrado",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+        
+    except FileNotFoundException as e:
+        logger.warning(f"Arquivo não encontrado na atualização: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Arquivo não encontrado",
+            headers={"error_type": "FileNotFoundException"}
+        )
+        
+    except ValueError as e:
+        logger.error(f"Dados inválidos na atualização: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e)
+        )
+        
     except Exception as e:
-        logger.error(f"Erro na atualização: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e)) 
+        logger.error(f"Erro inesperado na atualização: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro interno do servidor"
+        )
+
+
+# Função helper para obter o caso de uso de atualização
+def get_update_file_metadata_use_case() -> UpdateFileMetadataUseCase:
+    """Factory para obter o caso de uso de atualização de metadados do container"""
+    container = get_container()
+    return container.update_file_metadata_use_case()

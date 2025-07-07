@@ -21,6 +21,7 @@ from cloud_storage_app.application.use_cases.user.change_password_use_case impor
 from cloud_storage_app.application.use_cases.user.update_user_use_case import UpdateUserUseCase
 
 from cloud_storage_app.application.use_cases.files.list_user_files_use_case import ListUserFilesUseCase
+from cloud_storage_app.application.use_cases.files.update_file_metadata_use_case import UpdateFileMetadataUseCase
 
 from cloud_storage_app.config import get_settings
 
