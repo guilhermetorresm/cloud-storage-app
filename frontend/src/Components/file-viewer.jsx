@@ -59,11 +59,44 @@ export function FileViewer({ fileId, onClose }) {
   const videoRef = useRef(null);
   const audioRef = useRef(null);
 
+  // Função para obter o access token (você precisa implementar isso de acordo com seu app)
+  const getAccessToken = () => {
+    // Placeholder: Em um aplicativo real, você buscaria isso do localStorage,
+    // de um contexto global ou de um hook de autenticação.
+    return localStorage.getItem("access_token");
+  };
+
   useEffect(() => {
     const fetchFile = async () => {
+      setLoading(true);
       try {
-        const res = await fetch(`/api/v1/files/${fileId}`);
-        if (!res.ok) throw new Error("Erro ao buscar arquivo");
+        const accessToken = getAccessToken();
+        if (!accessToken) {
+          throw new Error("Token de acesso não encontrado. Por favor, faça login.");
+        }
+
+        const res = await fetch(`/api/v1/files/${fileId}`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+
+        // Verifica se o tipo de conteúdo é JSON antes de tentar fazer o parse
+        const contentType = res.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          const errorText = await res.text();
+          throw new Error(
+            `Resposta inesperada do servidor: ${res.status} ${res.statusText}. Conteúdo recebido: ${errorText.substring(0, 200)}...`
+          );
+        }
+
+        if (!res.ok) {
+          const errorData = await res.json(); // Tenta fazer o parse como JSON se esperávamos JSON
+          throw new Error(
+            `Erro ao buscar arquivo: ${res.status} ${res.statusText} - ${errorData.message || 'Erro desconhecido.'}`
+          );
+        }
+
         const data = await res.json();
         setFile(data);
         setEditedFile({
@@ -73,7 +106,8 @@ export function FileViewer({ fileId, onClose }) {
           genre: data.genre || "",
         });
       } catch (err) {
-        console.error(err);
+        console.error("Erro ao buscar arquivo:", err);
+        alert(`Não foi possível carregar o arquivo: ${err.message}`);
       } finally {
         setLoading(false);
       }
@@ -103,17 +137,45 @@ export function FileViewer({ fileId, onClose }) {
 
   const handleSave = async () => {
     try {
+      const accessToken = getAccessToken();
+      if (!accessToken) {
+        throw new Error("Token de acesso não encontrado. Por favor, faça login.");
+      }
+
       const payload = {
         new_name: editedFile.title,
         new_description: editedFile.description,
         new_tags: editedFile.tags.join(","),
+        // Inclui o gênero no payload se aplicável
+        ...(file.type === "audio" || file.type === "video"
+          ? { new_genre: editedFile.genre }
+          : {}),
       };
+
       const res = await fetch(`/api/v1/files/${fileId}/metadata`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error("Erro ao atualizar metadados");
+
+      // Verifica se o tipo de conteúdo é JSON antes de tentar fazer o parse
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const errorText = await res.text();
+        throw new Error(
+          `Resposta inesperada do servidor ao salvar metadados: ${res.status} ${res.statusText}. Conteúdo recebido: ${errorText.substring(0, 200)}...`
+        );
+      }
+
+      if (!res.ok) {
+        const errorData = await res.json(); // Tenta fazer o parse como JSON
+        throw new Error(
+          `Erro ao atualizar metadados: ${res.status} ${res.statusText} - ${errorData.message || 'Erro desconhecido.'}`
+        );
+      }
       const updated = await res.json();
 
       setFile((prev) => ({
@@ -121,18 +183,20 @@ export function FileViewer({ fileId, onClose }) {
         title: updated.title || payload.new_name,
         description: updated.description || payload.new_description,
         tags: updated.tags || payload.new_tags.split(","),
+        genre: updated.genre || editedFile.genre,
       }));
       setEditedFile((prev) => ({
         ...prev,
         title: updated.title || prev.title,
         description: updated.description || prev.description,
         tags: updated.tags || prev.tags,
+        genre: updated.genre || prev.genre,
       }));
 
       setIsEditing(false);
     } catch (err) {
-      console.error(err);
-      alert("Falha ao salvar alterações");
+      console.error("Erro ao salvar metadados:", err);
+      alert(`Falha ao salvar alterações: ${err.message}`);
     }
   };
 
@@ -187,12 +251,12 @@ export function FileViewer({ fileId, onClose }) {
       ],
       video: [
         { icon: Monitor, label: "Dimensões", value: file.dimensions || "—" },
-        { icon: Clock, label: "Duração", value: file.duration || "—" },
+        { icon: Clock, label: "Duração", value: file.duration ? formatTime(file.duration) : "—" },
         { icon: FileType, label: "Formato", value: file.format || "—" },
         { icon: Tag, label: "Gênero", value: file.genre || "Não informado" },
       ],
       audio: [
-        { icon: Clock, label: "Duração", value: file.duration || "—" },
+        { icon: Clock, label: "Duração", value: file.duration ? formatTime(file.duration) : "—" },
         { icon: Music, label: "Bitrate", value: file.bitrate || "—" },
         { icon: Music, label: "Sample Rate", value: file.sampleRate || "—" },
         { icon: FileType, label: "Formato", value: file.format || "—" },
@@ -207,8 +271,16 @@ export function FileViewer({ fileId, onClose }) {
       case "image":
         return (
           <div className="relative bg-gray-50 rounded-xl overflow-hidden h-full flex justify-center items-center">
-            <img src={file.url} alt={file.title} className="max-w-full max-h-full object-contain" />
-            <Button variant="secondary" size="icon" className="absolute top-4 right-4 bg-black/20 text-white">
+            <img
+              src={file.url}
+              alt={file.title}
+              className="max-w-full max-h-full object-contain"
+            />
+            <Button
+              variant="secondary"
+              size="icon"
+              className="absolute top-4 right-4 bg-black/20 text-white"
+            >
               <Maximize className="h-4 w-4" />
             </Button>
           </div>
@@ -249,7 +321,10 @@ export function FileViewer({ fileId, onClose }) {
             />
             <div className="bg-white rounded-lg p-4 shadow-sm">
               <div className="flex items-center gap-4">
-                <Button onClick={togglePlayPause} className="rounded-full w-12 h-12 bg-purple-600 text-white">
+                <Button
+                  onClick={togglePlayPause}
+                  className="rounded-full w-12 h-12 bg-purple-600 text-white"
+                >
                   {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
                 </Button>
                 <div className="flex-1">
